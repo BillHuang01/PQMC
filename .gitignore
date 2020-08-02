@@ -11,3 +11,6 @@
 # Ignore R history file
 *.Rhistory
 *.DS_Store
+
+# Ignore document directory for now
+doc/*

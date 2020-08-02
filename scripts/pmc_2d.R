@@ -1,6 +1,6 @@
 # load library
-#source("scripts/lib.R")
-source("lib.R")
+source("scripts/lib.R")
+# source("lib.R")
 library(mvtnorm)
 library(randtoolbox)
 

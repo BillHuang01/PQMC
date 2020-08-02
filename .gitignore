@@ -4,6 +4,7 @@
 *.bcf
 *.dvi
 *.log
+*.pdf
 *.run.xml
 *.synctex.gz
 

@@ -1,0 +1,12 @@
+# Ignore File generated from Tex
+*-blx.bib
+*.bbl
+*.bcf
+*.dvi
+*.log
+*.run.xml
+*.synctex.gz
+
+# Ignore R history file
+*.Rhistory
+*.DS_Store

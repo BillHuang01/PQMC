@@ -5,7 +5,7 @@ Chaofan (Bill) Huang
 Let us first load the required libraries and scripts.
 
 ``` r
-set.seed(080220)
+set.seed(950922)
 source("scripts/lib.R")
 library(mvtnorm)
 library(randtoolbox)
@@ -89,12 +89,12 @@ points(sp.samp, pch = 16, cex = 1, col = "red")
 
 ![](README_files/figure-gfm/resample-1.png)<!-- -->
 
-## PMC
+## PQMC vs. PMC
 
-Let us now run PMC on the mixture of five normals with N = 50, J = 20,
-and T = 6. The initial centers are the 50 Sobol points over the unit
-square. Adaptation for covariance is applied. Here follows the parameter
-setting for the PMC.
+Let us now run PMC and PQMC on the mixture of five normals with N = 50,
+J = 20, and T = 6. The initial centers are the 50 Sobol points over the
+unit square. Adaptation for covariance is applied. Here follows the
+parameter setting.
 
 ``` r
 expectation <- 0.5 + c(1.6,1.4) / 40 # E[X]
@@ -108,12 +108,12 @@ sigma <- 0.2 # initial covariance
 adaptation <- T # adaptation for covariance
 ```
 
-### Multinomial
+### PMC (Multinomial)
 
 ``` r
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.mn <- pmc(ini, logmixture, J, steps, sigma, resample = "Multinomial",
-              sigma.adapt = adaptation, qmc = T, visualization = T)
+              sigma.adapt = adaptation, qmc = F, visualization = T)
 ```
 
 ![](README_files/figure-gfm/pmc-mn-1.png)<!-- -->
@@ -123,35 +123,35 @@ pmc.mn <- pmc(ini, logmixture, J, steps, sigma, resample = "Multinomial",
 log(mean((pmc.mn$m.std - expectation)^2))
 ```
 
-    ## [1] -10.09398
+    ## [1] -10.01061
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.mn$m.wts - expectation)^2))
 ```
 
-    ## [1] -15.17702
+    ## [1] -11.76628
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.mn$z.std - Z)^2)
 ```
 
-    ## [1] -7.483487
+    ## [1] -7.955113
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.mn$z.wts - Z)^2)
 ```
 
-    ## [1] -9.655509
+    ## [1] -11.97185
 
-### Systematic
+### PMC (Systematic)
 
 ``` r
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.ss <- pmc(ini, logmixture, J, steps, sigma, resample = "Systematic",
-              sigma.adapt = adaptation, qmc = T, visualization = T)
+              sigma.adapt = adaptation, qmc = F, visualization = T)
 ```
 
 ![](README_files/figure-gfm/pmc-ss-1.png)<!-- -->
@@ -161,30 +161,30 @@ pmc.ss <- pmc(ini, logmixture, J, steps, sigma, resample = "Systematic",
 log(mean((pmc.ss$m.std - expectation)^2))
 ```
 
-    ## [1] -11.23606
+    ## [1] -10.38251
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.ss$m.wts - expectation)^2))
 ```
 
-    ## [1] -13.19546
+    ## [1] -11.5296
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.ss$z.std - Z)^2)
 ```
 
-    ## [1] -6.733172
+    ## [1] -7.803806
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.ss$z.wts - Z)^2)
 ```
 
-    ## [1] -9.842951
+    ## [1] -9.693227
 
-### Support Points
+### PQMC (Support Points)
 
 ``` r
 layout(matrix(c(1:6), nrow = 2, byrow = T))
@@ -199,25 +199,25 @@ pmc.sp <- pmc(ini, logmixture, J, steps, sigma, resample = "SP",
 log(mean((pmc.sp$m.std - expectation)^2))
 ```
 
-    ## [1] -11.47272
+    ## [1] -13.39367
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.sp$m.wts - expectation)^2))
 ```
 
-    ## [1] -16.91554
+    ## [1] -12.72614
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.sp$z.std - Z)^2)
 ```
 
-    ## [1] -6.985696
+    ## [1] -8.226449
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.sp$z.wts - Z)^2)
 ```
 
-    ## [1] -9.363427
+    ## [1] -9.391523

@@ -7,7 +7,7 @@ output: rmarkdown::github_document
 Let us first load the required libraries and scripts.
 
 ```{r library, message = F, warning = F}
-set.seed(080220)
+set.seed(950922)
 source("scripts/lib.R")
 library(mvtnorm)
 library(randtoolbox)
@@ -83,9 +83,9 @@ contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main 
 points(sp.samp, pch = 16, cex = 1, col = "red")
 ```
 
-## PMC 
+## PQMC vs. PMC
 
-Let us now run PMC on the mixture of five normals with N = 50, J = 20, and T = 6. The initial centers are the 50 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting for the PMC.
+Let us now run PMC and PQMC on the mixture of five normals with N = 50, J = 20, and T = 6. The initial centers are the 50 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting.
 
 ```{r pmc-setting, warning = F, message = F}
 expectation <- 0.5 + c(1.6,1.4) / 40 # E[X]
@@ -99,11 +99,11 @@ sigma <- 0.2 # initial covariance
 adaptation <- T # adaptation for covariance
 ```
 
-### Multinomial
+### PMC (Multinomial)
 ```{r pmc-mn, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.mn <- pmc(ini, logmixture, J, steps, sigma, resample = "Multinomial",
-              sigma.adapt = adaptation, qmc = T, visualization = T)
+              sigma.adapt = adaptation, qmc = F, visualization = T)
 # log MSE of E[X] by standard PMC estimator
 log(mean((pmc.mn$m.std - expectation)^2))
 # log MSE of E[X] by weighted PMC estimator
@@ -114,11 +114,11 @@ log((pmc.mn$z.std - Z)^2)
 log((pmc.mn$z.wts - Z)^2)
 ```
 
-### Systematic
+### PMC (Systematic)
 ```{r pmc-ss, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.ss <- pmc(ini, logmixture, J, steps, sigma, resample = "Systematic",
-              sigma.adapt = adaptation, qmc = T, visualization = T)
+              sigma.adapt = adaptation, qmc = F, visualization = T)
 # log MSE of E[X] by standard PMC estimator
 log(mean((pmc.ss$m.std - expectation)^2))
 # log MSE of E[X] by weighted PMC estimator
@@ -129,7 +129,7 @@ log((pmc.ss$z.std - Z)^2)
 log((pmc.ss$z.wts - Z)^2)
 ```
 
-### Support Points
+### PQMC (Support Points)
 ```{r pmc-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.sp <- pmc(ini, logmixture, J, steps, sigma, resample = "SP",

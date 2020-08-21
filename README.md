@@ -5,7 +5,7 @@ Chaofan (Bill) Huang
 Let us first load the required libraries and scripts.
 
 ``` r
-set.seed(950922)
+set.seed(082020)
 source("scripts/lib.R")
 library(mvtnorm)
 library(randtoolbox)
@@ -123,28 +123,28 @@ pmc.mn <- pmc(ini, logmixture, J, steps, sigma, resample = "Multinomial",
 log(mean((pmc.mn$m.std - expectation)^2))
 ```
 
-    ## [1] -10.01061
+    ## [1] -8.66322
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.mn$m.wts - expectation)^2))
 ```
 
-    ## [1] -11.76628
+    ## [1] -11.51418
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.mn$z.std - Z)^2)
 ```
 
-    ## [1] -7.955113
+    ## [1] -6.717782
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.mn$z.wts - Z)^2)
 ```
 
-    ## [1] -11.97185
+    ## [1] -11.08617
 
 ### PMC (Systematic)
 
@@ -161,28 +161,28 @@ pmc.ss <- pmc(ini, logmixture, J, steps, sigma, resample = "Systematic",
 log(mean((pmc.ss$m.std - expectation)^2))
 ```
 
-    ## [1] -10.38251
+    ## [1] -8.572821
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.ss$m.wts - expectation)^2))
 ```
 
-    ## [1] -11.5296
+    ## [1] -12.35101
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.ss$z.std - Z)^2)
 ```
 
-    ## [1] -7.803806
+    ## [1] -6.475045
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.ss$z.wts - Z)^2)
 ```
 
-    ## [1] -9.693227
+    ## [1] -8.29988
 
 ### PQMC (Support Points)
 
@@ -199,25 +199,25 @@ pmc.sp <- pmc(ini, logmixture, J, steps, sigma, resample = "SP",
 log(mean((pmc.sp$m.std - expectation)^2))
 ```
 
-    ## [1] -13.39367
+    ## [1] -11.64534
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.sp$m.wts - expectation)^2))
 ```
 
-    ## [1] -12.72614
+    ## [1] -12.09352
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.sp$z.std - Z)^2)
 ```
 
-    ## [1] -8.226449
+    ## [1] -8.124175
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.sp$z.wts - Z)^2)
 ```
 
-    ## [1] -9.391523
+    ## [1] -10.80691

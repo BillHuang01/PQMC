@@ -7,7 +7,7 @@ output: rmarkdown::github_document
 Let us first load the required libraries and scripts.
 
 ```{r library, message = F, warning = F}
-set.seed(950922)
+set.seed(082020)
 source("scripts/lib.R")
 library(mvtnorm)
 library(randtoolbox)

@@ -1,5 +1,6 @@
 # load library
-# library(support)
+library(support)
+library(FNN)
 
 # log to handle numerical underflow
 logaddexp <- function(logv){
@@ -103,8 +104,9 @@ sp.sample <- function(x, n, prob, tol = 1e-6, iter.max = 10){
   return (idx)
 }
 
-pmc <- function(ini, logf, J, steps, sigma, resample = 'SP', output = 'estimator',
-                sigma.adapt = F, qmc = F, visualization = F){
+pmc <- function(ini, logf, J, steps, sigma, 
+                resample = 'SP', sample = "random", output = 'estimator',
+                sigma.adapt = F, visualization = F){
   # Population Monte Carlo Global Resampling
   # ini: initialization points
   # logf: log target density
@@ -128,18 +130,33 @@ pmc <- function(ini, logf, J, steps, sigma, resample = 'SP', output = 'estimator
   ini.all <- ini
   samp.all <- NULL
   samp.all.logwts <- NULL
+  samp.no <- rep(0, steps)
   ess <- rep(0, steps)
   
   for (t in 1:steps){
+    
     # sample from proposals
-    samp <- NULL
-    for (i in 1:n){
-      if (qmc) {
-        noise <- qnorm(sobol(J,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma) 
-      } else {
+    if (sample == 'random'){
+      samp <- NULL
+      for (i in 1:n){
         noise <- matrix(rnorm(J*p, mean = 0, sd = sigma), ncol = p)
+        samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
       }
-      samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
+    } else if (sample == 'qmc'){
+      samp <- NULL
+      for (i in 1:n){
+        noise <- qnorm(sobol(J,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
+        samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
+      }
+    } else if (sample == 'sp'){
+      samp.qmc <- NULL
+      for (i in 1:n){
+        noise <- qnorm(sobol(J*25,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
+        samp.qmc <- rbind(samp.qmc, (rep(1,J*25) %*% t(ini[i,]) + noise))
+      }
+      invisible(capture.output(samp <- sp((n*J), p, dist.samp = samp.qmc)$sp))
+      samp.nn.idx <- knnx.index(data = samp.qmc, query = samp, k = 1)
+      samp <- samp.qmc[samp.nn.idx,]
     }
     
     # compute deterministic mixture weight
@@ -169,14 +186,16 @@ pmc <- function(ini, logf, J, steps, sigma, resample = 'SP', output = 'estimator
       sigma <- sqrt(sigma/p)
     }
     
-    # resample: Multinomial/Residual/Systematic/SP
-    if (resample == 'Multinomial'){
+    # resample: multinomial/residual/systematic/sp
+    if (resample == 'multinomial'){
       ini <- samp[sample(1:length(samp.wts), n, replace = T, prob = samp.wts),]
-    } else if (resample == 'Residual'){
+    } else if (resample == 'residual'){
       ini <- samp[rs.sample(1:length(samp.wts), n, samp.wts),]
-    } else if (resample == 'Systematic'){
+    } else if (resample == 'systematic'){
       ini <- samp[ss.sample(1:length(samp.wts), n, samp.wts),]
-    } else if (resample == 'SP'){
+    } else if (resample == 'stratified'){
+      ini <- samp[st.sample(1:length(samp.wts), n, samp.wts),]
+    } else if (resample == 'sp'){
       ini <- samp[sp.sample(samp, n, samp.wts),]
     } else {
       stop("no such resampling method!")

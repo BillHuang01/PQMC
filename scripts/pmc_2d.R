@@ -1,6 +1,6 @@
 # load library
 source("scripts/lib.R")
-# source("lib.R")
+source("lib.R")
 library(mvtnorm)
 library(randtoolbox)
 
@@ -39,6 +39,15 @@ ini <- sobol(N, p)
 ini.label <- "full"
 # ini <- 0.4 + 0.2 * sobol(N, p)
 # ini.label <- "sub"
+
+#pmc.output <- pmc.sp(ini, logmixture, J, steps, 0.2, visualization = T)
+#pmc.output <- pmc(ini, logmixture, J, steps, 0.5, sample = sample,
+#                  resample = resample, sigma.adapt = T, visualization = T)
+#log(mean((pmc.output$m.std - expectation)^2))
+#log(mean((pmc.output$m.wts - expectation)^2))
+#log(mean((pmc.output$m.las - expectation)^2))
+#log((pmc.output$z.std - 1)^2)
+#log((pmc.output$z.wts - 1)^2)
 
 stds <- c(0.1,0.2,0.5)
 if (sample == "sp" | resample == "sp"){

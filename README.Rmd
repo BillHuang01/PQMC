@@ -1,5 +1,5 @@
 ---
-title: "Improving PMC Using Support Points"
+title: "Population Quasi-Monte Carlo"
 author: "Chaofan (Bill) Huang"
 output: rmarkdown::github_document
 ---
@@ -87,7 +87,7 @@ points(sp.samp, pch = 16, cex = 1, col = "red")
 
 Let us now run PMC and PQMC on the mixture of five normals with N = 25, J = 10, and T = 6. The initial centers are the 25 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting.
 
-```{r pmc-setting, warning = F, message = F}
+```{r pmc-mixture-setting, warning = F, message = F}
 expectation <- 0.5 + c(1.6,1.4) / 40 # E[X]
 Z <- 1 # normalizing constant
 p <- 2 # dimensions
@@ -100,7 +100,7 @@ adaptation <- T # adaptation for covariance
 ```
 
 ### PMC (Random + Multinomial)
-```{r pmc-mn, warning = F, message = F, fig.height = 6, fig.width = 9}
+```{r pmc-mixture-mn, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.mn <- pmc(ini, logmixture, J, steps, sigma, 
               sample = "random", resample = "multinomial",
@@ -116,7 +116,7 @@ log((pmc.mn$z.wts - Z)^2)
 ```
 
 ### PMC (Random + Systematic)
-```{r pmc-ss, warning = F, message = F, fig.height = 6, fig.width = 9}
+```{r pmc-mixture-ss, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.ss <- pmc(ini, logmixture, J, steps, sigma, 
               sample = "random", resample = "systematic",
@@ -132,7 +132,7 @@ log((pmc.ss$z.wts - Z)^2)
 ```
 
 ### PQMC (QMC + SP)
-```{r pmc-sp1, warning = F, message = F, fig.height = 6, fig.width = 9}
+```{r pmc-mixture-qmc-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.sp <- pmc(ini, logmixture, J, steps, sigma, 
               sample = "qmc", resample = "sp",
@@ -148,10 +148,26 @@ log((pmc.sp$z.wts - Z)^2)
 ```
 
 ### PQMC (SP + SP)
-```{r pmc-sp2, warning = F, message = F, fig.height = 6, fig.width = 9}
+```{r pmc-mixture-sp-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.sp <- pmc(ini, logmixture, J, steps, sigma, 
               sample = "sp", resample = "sp",
+              sigma.adapt = adaptation, visualization = T)
+# log MSE of E[X] by standard PMC estimator
+log(mean((pmc.sp$m.std - expectation)^2))
+# log MSE of E[X] by weighted PMC estimator
+log(mean((pmc.sp$m.wts - expectation)^2))
+# log MSE of Z by standard PMC estimator
+log((pmc.sp$z.std - Z)^2)
+# log MSE of Z by weighted PMC estimator
+log((pmc.sp$z.wts - Z)^2)
+```
+
+### PQMC (MSP + SP)
+```{r pmc-mixture-msp-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
+layout(matrix(c(1:6), nrow = 2, byrow = T))
+pmc.sp <- pmc(ini, logmixture, J, steps, sigma, 
+              sample = "msp", resample = "sp",
               sigma.adapt = adaptation, visualization = T)
 # log MSE of E[X] by standard PMC estimator
 log(mean((pmc.sp$m.std - expectation)^2))
@@ -187,7 +203,6 @@ contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15)
 Let us now run PMC and PQMC on the mixture of five normals with N = 25, J = 10, and T = 6. The initial centers are the 25 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting.
 
 ```{r pmc-banana-setting, warning = F, message = F}
-expectation <- c(0.5, 0.7163) # computed using grid approach
 p <- 2 # dimensions
 N <- 25 # number of propopsals
 J <- 10 # number of samples drawn from each proposal
@@ -203,10 +218,6 @@ layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.mn <- pmc(ini, logbanana, J, steps, sigma, 
               sample = "random", resample = "multinomial",
               sigma.adapt = adaptation, visualization = T)
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.mn$m.std - expectation)^2))
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.mn$m.wts - expectation)^2))
 ```
 
 ### PMC (Random + Systematic)
@@ -215,32 +226,28 @@ layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.ss <- pmc(ini, logbanana, J, steps, sigma, 
               sample = "random", resample = "systematic",
               sigma.adapt = adaptation, visualization = T)
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.ss$m.std - expectation)^2))
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.ss$m.wts - expectation)^2))
 ```
 
 ### PQMC (QMC + SP)
-```{r pmc-banana-sp1, warning = F, message = F, fig.height = 6, fig.width = 9}
+```{r pmc-banana-qmc-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.sp <- pmc(ini, logbanana, J, steps, sigma, 
               sample = "qmc", resample = "sp",
               sigma.adapt = adaptation, visualization = T)
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.sp$m.std - expectation)^2))
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.sp$m.wts - expectation)^2))
 ```
 
 ### PQMC (SP + SP)
-```{r pmc-banana-sp2, warning = F, message = F, fig.height = 6, fig.width = 9}
+```{r pmc-banana-sp-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 pmc.sp <- pmc(ini, logbanana, J, steps, sigma, 
               sample = "sp", resample = "sp",
               sigma.adapt = adaptation, visualization = T)
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.sp$m.std - expectation)^2))
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.sp$m.wts - expectation)^2))
+```
+
+### PQMC (MSP + SP)
+```{r pmc-banana-msp-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
+layout(matrix(c(1:6), nrow = 2, byrow = T))
+pmc.sp <- pmc(ini, logbanana, J, steps, sigma, 
+              sample = "msp", resample = "sp",
+              sigma.adapt = adaptation, visualization = T)
 ```

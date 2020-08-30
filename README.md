@@ -1,4 +1,4 @@
-Improving PMC Using Support Points
+Population Quasi-Monte Carlo
 ================
 Chaofan (Bill) Huang
 
@@ -117,7 +117,7 @@ pmc.mn <- pmc(ini, logmixture, J, steps, sigma,
               sigma.adapt = adaptation, visualization = T)
 ```
 
-![](README_files/figure-gfm/pmc-mn-1.png)<!-- -->
+![](README_files/figure-gfm/pmc-mixture-mn-1.png)<!-- -->
 
 ``` r
 # log MSE of E[X] by standard PMC estimator
@@ -156,7 +156,7 @@ pmc.ss <- pmc(ini, logmixture, J, steps, sigma,
               sigma.adapt = adaptation, visualization = T)
 ```
 
-![](README_files/figure-gfm/pmc-ss-1.png)<!-- -->
+![](README_files/figure-gfm/pmc-mixture-ss-1.png)<!-- -->
 
 ``` r
 # log MSE of E[X] by standard PMC estimator
@@ -195,7 +195,7 @@ pmc.sp <- pmc(ini, logmixture, J, steps, sigma,
               sigma.adapt = adaptation, visualization = T)
 ```
 
-![](README_files/figure-gfm/pmc-sp1-1.png)<!-- -->
+![](README_files/figure-gfm/pmc-mixture-qmc-sp-1.png)<!-- -->
 
 ``` r
 # log MSE of E[X] by standard PMC estimator
@@ -234,35 +234,74 @@ pmc.sp <- pmc(ini, logmixture, J, steps, sigma,
               sigma.adapt = adaptation, visualization = T)
 ```
 
-![](README_files/figure-gfm/pmc-sp2-1.png)<!-- -->
+![](README_files/figure-gfm/pmc-mixture-sp-sp-1.png)<!-- -->
 
 ``` r
 # log MSE of E[X] by standard PMC estimator
 log(mean((pmc.sp$m.std - expectation)^2))
 ```
 
-    ## [1] -12.55829
+    ## [1] -13.29679
 
 ``` r
 # log MSE of E[X] by weighted PMC estimator
 log(mean((pmc.sp$m.wts - expectation)^2))
 ```
 
-    ## [1] -14.75212
+    ## [1] -13.3158
 
 ``` r
 # log MSE of Z by standard PMC estimator
 log((pmc.sp$z.std - Z)^2)
 ```
 
-    ## [1] -7.773414
+    ## [1] -5.120851
 
 ``` r
 # log MSE of Z by weighted PMC estimator
 log((pmc.sp$z.wts - Z)^2)
 ```
 
-    ## [1] -11.68183
+    ## [1] -7.22959
+
+### PQMC (MSP + SP)
+
+``` r
+layout(matrix(c(1:6), nrow = 2, byrow = T))
+pmc.sp <- pmc(ini, logmixture, J, steps, sigma, 
+              sample = "msp", resample = "sp",
+              sigma.adapt = adaptation, visualization = T)
+```
+
+![](README_files/figure-gfm/pmc-mixture-msp-sp-1.png)<!-- -->
+
+``` r
+# log MSE of E[X] by standard PMC estimator
+log(mean((pmc.sp$m.std - expectation)^2))
+```
+
+    ## [1] -11.08229
+
+``` r
+# log MSE of E[X] by weighted PMC estimator
+log(mean((pmc.sp$m.wts - expectation)^2))
+```
+
+    ## [1] -14.89853
+
+``` r
+# log MSE of Z by standard PMC estimator
+log((pmc.sp$z.std - Z)^2)
+```
+
+    ## [1] -6.828358
+
+``` r
+# log MSE of Z by weighted PMC estimator
+log((pmc.sp$z.wts - Z)^2)
+```
+
+    ## [1] -12.13423
 
 ## PQMC vs. PMC on Banana Shape Distribution
 
@@ -295,7 +334,6 @@ unit square. Adaptation for covariance is applied. Here follows the
 parameter setting.
 
 ``` r
-expectation <- c(0.5, 0.7163) # computed using grid approach
 p <- 2 # dimensions
 N <- 25 # number of propopsals
 J <- 10 # number of samples drawn from each proposal
@@ -316,20 +354,6 @@ pmc.mn <- pmc(ini, logbanana, J, steps, sigma,
 
 ![](README_files/figure-gfm/pmc-banana-mn-1.png)<!-- -->
 
-``` r
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.mn$m.std - expectation)^2))
-```
-
-    ## [1] -7.550424
-
-``` r
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.mn$m.wts - expectation)^2))
-```
-
-    ## [1] -7.587697
-
 ### PMC (Random + Systematic)
 
 ``` r
@@ -341,20 +365,6 @@ pmc.ss <- pmc(ini, logbanana, J, steps, sigma,
 
 ![](README_files/figure-gfm/pmc-banana-ss-1.png)<!-- -->
 
-``` r
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.ss$m.std - expectation)^2))
-```
-
-    ## [1] -8.757924
-
-``` r
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.ss$m.wts - expectation)^2))
-```
-
-    ## [1] -8.646932
-
 ### PQMC (QMC + SP)
 
 ``` r
@@ -364,21 +374,7 @@ pmc.sp <- pmc(ini, logbanana, J, steps, sigma,
               sigma.adapt = adaptation, visualization = T)
 ```
 
-![](README_files/figure-gfm/pmc-banana-sp1-1.png)<!-- -->
-
-``` r
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.sp$m.std - expectation)^2))
-```
-
-    ## [1] -8.79879
-
-``` r
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.sp$m.wts - expectation)^2))
-```
-
-    ## [1] -9.261498
+![](README_files/figure-gfm/pmc-banana-qmc-sp-1.png)<!-- -->
 
 ### PQMC (SP + SP)
 
@@ -389,18 +385,15 @@ pmc.sp <- pmc(ini, logbanana, J, steps, sigma,
               sigma.adapt = adaptation, visualization = T)
 ```
 
-![](README_files/figure-gfm/pmc-banana-sp2-1.png)<!-- -->
+![](README_files/figure-gfm/pmc-banana-sp-sp-1.png)<!-- -->
+
+### PQMC (MSP + SP)
 
 ``` r
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.sp$m.std - expectation)^2))
+layout(matrix(c(1:6), nrow = 2, byrow = T))
+pmc.sp <- pmc(ini, logbanana, J, steps, sigma, 
+              sample = "msp", resample = "sp",
+              sigma.adapt = adaptation, visualization = T)
 ```
 
-    ## [1] -9.644191
-
-``` r
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.sp$m.wts - expectation)^2))
-```
-
-    ## [1] -9.765651
+![](README_files/figure-gfm/pmc-banana-msp-sp-1.png)<!-- -->

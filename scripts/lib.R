@@ -130,8 +130,11 @@ pmc <- function(ini, logf, J, steps, sigma,
   ini.all <- ini
   samp.all <- NULL
   samp.all.logwts <- NULL
-  samp.no <- rep(0, steps)
   ess <- rep(0, steps)
+  
+  if (sample == "sp"){
+    invisible(capture.output(noise.base <- sp(J, p, dist.str = rep("normal",p))$sp))
+  }
   
   for (t in 1:steps){
     
@@ -148,7 +151,14 @@ pmc <- function(ini, logf, J, steps, sigma,
         noise <- qnorm(sobol(J,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
         samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
       }
-    } else if (sample == 'sp'){
+    } else if (sample == "sp"){
+      samp <- NULL
+      for (i in 1:n){
+        noise <- noise.base[,sample(1:p,p,replace=F)] * sigma
+        samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
+      }
+    }
+    else if (sample == 'msp'){
       samp.qmc <- NULL
       for (i in 1:n){
         noise <- qnorm(sobol(J*25,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
@@ -174,6 +184,7 @@ pmc <- function(ini, logf, J, steps, sigma,
     samp.all <- rbind(samp.all, samp)
     samp.all.logwts <- c(samp.all.logwts, samp.logwts)
     ess[t] <- 1 / sum(samp.wts^2)
+    #print(ess[t])
     
     if (sigma.adapt & t < steps){
       samp.dm.wts <- exp(samp.dm.logwts - samp.dm.logsumwts %*% t(rep(1,n)))
@@ -185,6 +196,7 @@ pmc <- function(ini, logf, J, steps, sigma,
       }
       sigma <- sqrt(sigma/p)
     }
+    #print(sigma)
     
     # resample: multinomial/residual/systematic/sp
     if (resample == 'multinomial'){
@@ -238,6 +250,7 @@ pmc <- function(ini, logf, J, steps, sigma,
   }
   
 }
+
 
 energy_dist <- function(X, Y, X.wts = NULL, Y.wts = NULL){
   n.X <- nrow(X)

@@ -1,5 +1,6 @@
 # load library
 source("scripts/lib.R")
+source("lib.R")
 library(mvtnorm)
 library(randtoolbox)
 
@@ -14,19 +15,57 @@ logmixture <- function(x){
   return (logf)
 }
 
+logmixture <- function(x){
+  p <- length(x)
+  v <- matrix(NA, nrow = 3, ncol = p)
+  v[1,] <- rep(-5,p)
+  v[2,] <- rep(3,p)
+  v[3,] <- rep(8,p)
+  v <- (20 + v) / 40
+  sigma <- array(NA, dim = c(3,p,p))
+  sigma.base <- diag(p)
+  sigma[1,,] <- 0.15^2 * diag(p)
+  sigma[2,,] <- 0.2^2 * (-0.5)^(abs(row(sigma.base) - col(sigma.base)))
+  sigma[3,,] <- 0.2^2 * 0.5^(abs(row(sigma.base) - col(sigma.base)))
+  logf <- rep(0,3)
+  for (i in 1:3) logf[i] <- dmvnorm(x, mean = v[i,], sigma = sigma[i,,], log = T)
+  logf <- logaddexp(logf) -log(3)
+  return (logf)
+}
+
 # experiment setting
 set.seed(950922)
-runs <- 100
-steps <- 10
 p <- 10
-N <- 50 # 50, 100
-J <- 40 # 40, 20
-stds <- c(0.5, 0.2, 0.1)
+expectation <- 0.5 + rep(4/3, p) / 40
+runs <- 100
+steps <- 8
+N <- 50
+J <- 40
+sample <- "sp"
+resample <- "sp"
 ini <- sobol(N, p)
 ini.label <- "full"
-expectation <- 0.5 + rep(4/3, p) / 40
-adaptation <- c(TRUE, FALSE)
-adaptation.label <- c("adapt","regular")
+
+stds <- c(0.1,0.2,0.5)
+if (sample == "sp" | resample == "sp"){
+  adaptation <- c(TRUE)
+  adaptation.label <- c("adapt")
+} else {
+  adaptation <- c(TRUE, FALSE)
+  adaptation.label <- c("adapt","regular")
+}
+
+sigma <- 0.5
+pmc.output <- pmc(ini, logmixture, J, steps, sigma, 
+                  sample = sample, resample = resample,
+                  sigma.adapt = T, visualization = F)
+
+log(mean((pmc.output$m.std - expectation)^2))
+log(mean((pmc.output$m.wts - expectation)^2))
+log(mean((pmc.output$m.las - expectation)^2))
+log((pmc.output$z.std - 1)^2)
+log((pmc.output$z.wts - 1)^2)
+
 
 for (i in 1:length(adaptation)){
   for (j in 1:length(stds)){

@@ -311,21 +311,12 @@ pmc <- function(logf, N, J, steps, ini, ini.logq = NULL,
     z.wts <- mean(exp(samp.wts.logwts))
     # normalized as a whole
     samp.wts.wts <- exp(samp.wts.logwts - logaddexp(samp.wts.logwts))
-    m.wts1 <- c(t(samp.all) %*% samp.wts.wts)
-    # nomarlized within each iteration
-    m.wts2 <- rep(0,p)
-    for (t in 1:steps){
-      samp <- samp.all[((t-1)*N*J+1):(t*N*J),]
-      samp.logwts <- samp.all.logwts[((t-1)*N*J+1):(t*N*J)]
-      samp.wts <- exp(samp.logwts - logaddexp(samp.logwts))
-      m.wts2 <- m.wts2 + alpha[t] * c(t(samp) %*% samp.wts)
-    }
+    m.wts <- c(t(samp.all) %*% samp.wts.wts)
     # last adapted sample
     m.las <- c(apply(center, 2, mean))
     
     return (list(m.std = m.std,
-                 m.wts1 = m.wts1,
-                 m.wts2 = m.wts2,
+                 m.wts = m.wts,
                  m.las = m.las,
                  z.std = z.std,
                  z.wts = z.wts))

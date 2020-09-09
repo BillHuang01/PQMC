@@ -18,6 +18,7 @@ logmixture <- function(x){
 # experimental setting
 p <- 15
 expectation <- 0.5 + rep(4/3, p) / 40
+Z <- 1
 runs <- 100
 steps <- 10
 N <- 50 
@@ -47,8 +48,7 @@ for (d in 2:p){
   
   # store results
   m.std <- rep(0, runs)
-  m.wts1 <- rep(0, runs)
-  m.wts2 <- rep(0, runs)
+  m.wts <- rep(0, runs)
   m.las <- rep(0, runs)
   z.std <- rep(0, runs)
   z.wts <- rep(0, runs)
@@ -63,11 +63,10 @@ for (d in 2:p){
     end.time <- Sys.time()
     times[k] <- as.numeric((end.time - start.time), units = "secs")
     m.std[k] <- log(mean((pmc.output$m.std - expectation)^2))
-    m.wts1[k] <- log(mean((pmc.output$m.wts1 - expectation)^2))
-    m.wts2[k] <- log(mean((pmc.output$m.wts2 - expectation)^2))
+    m.wts[k] <- log(mean((pmc.output$m.wts - expectation)^2))
     m.las[k] <- log(mean((pmc.output$m.las - expectation)^2))
-    z.std[k] <- log((pmc.output$z.std - 1)^2)
-    z.wts[k] <- log((pmc.output$z.wts - 1)^2)
+    z.std[k] <- log((pmc.output$z.std - Z)^2)
+    z.wts[k] <- log((pmc.output$z.wts - Z)^2)
     
     # save log
     log.file <- sprintf("results/pmc_hd/log_mixture_%d_%d_%d_%s_%s_%s_%s.txt",
@@ -76,8 +75,7 @@ for (d in 2:p){
     cat(sprintf("dimension:%d\n", d))
     cat(sprintf("run: %d\n", k))
     cat(sprintf("m.std: %.3f\n", m.std[k]))
-    cat(sprintf("m.wts1: %.3f\n", m.wts1[k]))
-    cat(sprintf("m.wts2: %.3f\n", m.wts2[k]))
+    cat(sprintf("m.wts: %.3f\n", m.wts[k]))
     cat(sprintf("time: %.3f\n", times[k]))
     sink()
   }
@@ -85,8 +83,7 @@ for (d in 2:p){
   # save output
   logmse <- data.frame(
     m.std,
-    m.wts1,
-    m.wts2,
+    m.wts,
     m.las,
     z.std,
     z.wts,

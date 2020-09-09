@@ -68,7 +68,7 @@ logbanana <- function(x)
 # target distribution
 logf <- logmixture
 expectation <- 0.5 + c(1.6,1.4) / 40
-z <- 1
+Z <- 1
 logf.label <- "mixture"
 # logf <- logbanana
 # expectation <- c(0.5,0.7162834)
@@ -100,8 +100,7 @@ sigma.label <- "0.2_adapt"
 
 # store results
 m.std <- rep(0, runs)
-m.wts1 <- rep(0, runs)
-m.wts2 <- rep(0, runs)
+m.wts <- rep(0, runs)
 m.las <- rep(0, runs)
 z.std <- rep(0, runs)
 z.wts <- rep(0, runs)
@@ -116,11 +115,10 @@ for (k in 1:runs){
   end.time <- Sys.time()
   times[k] <- as.numeric((end.time - start.time), units = "secs")
   m.std[k] <- log(mean((pmc.output$m.std - expectation)^2))
-  m.wts1[k] <- log(mean((pmc.output$m.wts1 - expectation)^2))
-  m.wts2[k] <- log(mean((pmc.output$m.wts2 - expectation)^2))
+  m.wts[k] <- log(mean((pmc.output$m.wts - expectation)^2))
   m.las[k] <- log(mean((pmc.output$m.las - expectation)^2))
-  z.std[k] <- log((pmc.output$z.std - z)^2)
-  z.wts[k] <- log((pmc.output$z.wts - z)^2)
+  z.std[k] <- log((pmc.output$z.std - Z)^2)
+  z.wts[k] <- log((pmc.output$z.wts - Z)^2)
   
   # save log
   log.file <- sprintf("results/pmc_2d/log_%s_%d_%d_%d_%s_%s_%s_%s.txt",
@@ -128,16 +126,14 @@ for (k in 1:runs){
   sink(log.file)
   cat(sprintf("run: %d\n", k))
   cat(sprintf("m.std: %.3f\n", m.std[k]))
-  cat(sprintf("m.wts1: %.3f\n", m.wts1[k]))
-  cat(sprintf("m.wts2: %.3f\n", m.wts2[k]))
+  cat(sprintf("m.wts: %.3f\n", m.wts[k]))
   cat(sprintf("time: %.3f\n", times[k]))
   sink()
 }
 # save output
 logmse <- data.frame(
   m.std,
-  m.wts1,
-  m.wts2,
+  m.wts,
   m.las,
   z.std,
   z.wts,

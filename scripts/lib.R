@@ -1,4 +1,5 @@
 # load library
+library(pracma)
 library(support)
 library(FNN)
 
@@ -104,153 +105,6 @@ sp.sample <- function(x, n, prob, tol = 1e-6, iter.max = 10){
   return (idx)
 }
 
-pmc <- function(ini, logf, J, steps, sigma, 
-                resample = 'SP', sample = "random", output = 'estimator',
-                sigma.adapt = F, visualization = F){
-  # Population Monte Carlo Global Resampling
-  # ini: initialization points
-  # logf: log target density
-  # J: number of samples per proposal
-  # sigma: initial proposal standard deviation
-  # resample: Multinomial/Residual/Systematic/SP
-  # output: esimation / raw
-  # sigma.adapt: adaption for sigma (T/F)
-  # qmc: qmc proposal points (T/F)
-  # visualization: T/F
-  
-  if (visualization){
-    x1 <- x2 <- seq(0, 1, length.out = 101)
-    x.grid <- expand.grid(x1, x2)
-    z <- matrix(exp(apply(x.grid, 1, logf)), 101, 101)
-  }
-  
-  n <- nrow(ini)
-  p <- ncol(ini)
-  # store samples
-  ini.all <- ini
-  samp.all <- NULL
-  samp.all.logwts <- NULL
-  ess <- rep(0, steps)
-  
-  if (sample == "sp"){
-    invisible(capture.output(noise.base <- sp(J, p, dist.str = rep("normal",p))$sp))
-  }
-  
-  for (t in 1:steps){
-    
-    # sample from proposals
-    if (sample == 'random'){
-      samp <- NULL
-      for (i in 1:n){
-        noise <- matrix(rnorm(J*p, mean = 0, sd = sigma), ncol = p)
-        samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
-      }
-    } else if (sample == 'qmc'){
-      samp <- NULL
-      for (i in 1:n){
-        noise <- qnorm(sobol(J,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
-        samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
-      }
-    } else if (sample == "sp"){
-      samp <- NULL
-      for (i in 1:n){
-        noise <- noise.base[,sample(1:p,p,replace=F)] * sigma
-        samp <- rbind(samp, (rep(1,J) %*% t(ini[i,]) + noise))
-      }
-    }
-    else if (sample == 'msp'){
-      samp.qmc <- NULL
-      for (i in 1:n){
-        noise <- qnorm(sobol(J*25,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
-        samp.qmc <- rbind(samp.qmc, (rep(1,J*25) %*% t(ini[i,]) + noise))
-      }
-      invisible(capture.output(samp <- sp((n*J), p, dist.samp = samp.qmc)$sp))
-      samp.nn.idx <- knnx.index(data = samp.qmc, query = samp, k = 1)
-      samp <- samp.qmc[samp.nn.idx,]
-    }
-    
-    # compute deterministic mixture weight
-    samp.dm.logwts <- matrix(0, nrow = nrow(samp), ncol = n)
-    for (i in 1:n){
-      for (j in 1:nrow(samp)){
-        dist <- samp[j,] - ini[i,]
-        samp.dm.logwts[j,i] <- sum(dnorm(dist, mean = 0, sd = sigma, log = T))
-      }
-    }
-    samp.dm.logsumwts <- apply(samp.dm.logwts, 1, logaddexp)
-    samp.logwts <- apply(samp, 1, logf) - (samp.dm.logsumwts - log(n))
-    samp.wts <- exp(samp.logwts - logaddexp(samp.logwts))
-    
-    samp.all <- rbind(samp.all, samp)
-    samp.all.logwts <- c(samp.all.logwts, samp.logwts)
-    ess[t] <- 1 / sum(samp.wts^2)
-    #print(ess[t])
-    
-    if (sigma.adapt & t < steps){
-      samp.dm.wts <- exp(samp.dm.logwts - samp.dm.logsumwts %*% t(rep(1,n)))
-      sigma <- 0
-      for (i in 1:n){
-        for (j in 1:nrow(samp)){
-          sigma <- sigma + samp.wts[j] * samp.dm.wts[j,i] * sum((samp[j,] - ini[i,])^2)
-        }
-      }
-      sigma <- sqrt(sigma/p)
-    }
-    #print(sigma)
-    
-    # resample: multinomial/residual/systematic/sp
-    if (resample == 'multinomial'){
-      ini <- samp[sample(1:length(samp.wts), n, replace = T, prob = samp.wts),]
-    } else if (resample == 'residual'){
-      ini <- samp[rs.sample(1:length(samp.wts), n, samp.wts),]
-    } else if (resample == 'systematic'){
-      ini <- samp[ss.sample(1:length(samp.wts), n, samp.wts),]
-    } else if (resample == 'stratified'){
-      ini <- samp[st.sample(1:length(samp.wts), n, samp.wts),]
-    } else if (resample == 'sp'){
-      ini <- samp[sp.sample(samp, n, samp.wts),]
-    } else {
-      stop("no such resampling method!")
-    }
-    
-    ini.all <- rbind(ini.all, ini)
-    
-    if (visualization){
-      contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 15, main = sprintf("t = %d", t))
-      points(samp, pch = 18, cex = 0.5, col = "green")
-      points(ini, pch = 16, cex = 1, col = "red")
-    }
-    
-  }
-  
-  if (output == 'estimator'){
-    # standard pmc
-    z.std <- mean(exp(samp.all.logwts))
-    samp.std.wts <- exp(samp.all.logwts - logaddexp(samp.all.logwts))
-    m.std <- c(t(samp.all) %*% samp.std.wts)
-    # weighted pmc
-    alpha <- ess / sum(ess)
-    samp.wts.logwts <- samp.all.logwts + rep(log(alpha), each = n*J) + log(steps)
-    z.wts <- mean(exp(samp.wts.logwts))
-    samp.wts.wts <- exp(samp.wts.logwts - logaddexp(samp.wts.logwts))
-    m.wts <- c(t(samp.all) %*% samp.wts.wts)
-    # last adapted sample
-    m.las <- c(apply(ini, 2, mean))
-    
-    return (list(m.std = m.std,
-                 m.wts = m.wts,
-                 m.las = m.las,
-                 z.std = z.std,
-                 z.wts = z.wts))
-  } else {
-    return (list(samp.all = samp.all,
-                 samp.all.logwts = samp.all.logwts,
-                 ini.all = ini.all,
-                 ess = ess))
-  }
-  
-}
-
 
 energy_dist <- function(X, Y, X.wts = NULL, Y.wts = NULL){
   n.X <- nrow(X)
@@ -274,4 +128,212 @@ energy_dist <- function(X, Y, X.wts = NULL, Y.wts = NULL){
   #   }
   #}
   return (e.dist)
+}
+
+pmc <- function(logf, N, J, steps, ini, ini.logq = NULL,
+                      sampling = "random", resampling = "sp", output = 'estimator',
+                      sigma = NULL, sigma.adapt = T, visualization = F){
+  # Population Monte Carlo with Prior Information
+  # logf: log target density
+  # ini: initialization points with log prior density,
+  #      size of ini = N * J
+  # N: number of proposal centers
+  # J: number of samples per proposal
+  # steps: number of PMC iterations
+  # sample: random / qmc / sp / msp (mixture sp)
+  # resample: multinomial / residual / systematic / stratified / sp
+  # output: weighted samples / estimator
+  # sigma: sigma for covariance, if NULL, then covariance adaptation
+  # sigma.adapt: covariance adaptation ?
+  # visualization: for two dimensional visualization
+  
+  # input size check
+  if (nrow(ini) == N * J){
+    ini.type <- 'sample'
+    if (any(is.null(ini.logq))) stop('ini.logq cannot be null for sample ini!')
+    if (length(ini.logq) != nrow(ini)) stop('ini.logq length does not match with ini #rows!')
+  } else if (nrow(ini) == N){
+    ini.type <- 'center'
+    center <- ini
+    if (is.null(sigma)) stop("if ini is proposal centers, then sigma is required!")
+  } else {
+    stop("number of ini points must be equal to N (for proposal centers) or N*J (for initial samples)!")
+  }
+  
+  # visualization check
+  p <- ncol(ini)
+  if (visualization & p != 2) visualization <- F
+  if (visualization){
+    x1 <- x2 <- seq(0, 1, length.out = 101)
+    x.grid <- expand.grid(x1, x2)
+    z <- matrix(exp(apply(x.grid, 1, logf)), 101, 101)
+  }
+  
+  # sample check
+  if (sampling == "sp"){
+    invisible(capture.output(noise.base <- sp(J, p, dist.str = rep("normal",p))$sp))
+  }
+  
+  # information storage
+  samp.all <- NULL
+  samp.all.logwts <- NULL
+  center.all <- NULL
+  ess <- rep(NA, steps)
+
+  if (ini.type == 'center') center.all <- rbind(center.all, center)
+  
+  # pmc procedures
+  for (t in 1:steps){
+    
+    # sampling
+    if (t == 1 & ini.type == 'sample'){
+      samp <- ini # samples
+      samp.logq <- ini.logq # log proposal density
+    } else {
+      # samples
+      if (sampling == "random"){
+        samp <- NULL
+        for (i in 1:N){
+          noise <- matrix(rnorm(J*p, mean = 0, sd = sigma), ncol = p)
+          samp <- rbind(samp, (rep(1,J) %*% t(center[i,]) + noise))
+        }
+      } else if (sampling == 'qmc'){
+        samp <- NULL
+        for (i in 1:N){
+          noise <- qnorm(sobol(J,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
+          samp <- rbind(samp, (rep(1,J) %*% t(center[i,]) + noise))
+        }
+      } else if (sampling == "sp"){
+        samp <- NULL
+        for (i in 1:N){
+          rotation <- randortho(p, type = "orthonormal")
+          noise <- noise.base %*% t(rotation)
+          noise <- noise[,sample(1:p,p)]
+          noise <- noise * sigma
+          samp <- rbind(samp, (rep(1,J) %*% t(center[i,]) + noise))
+        }
+      } else if (sampling == 'msp'){
+        samp.qmc <- NULL
+        for (i in 1:N){
+          noise <- qnorm(sobol(J*10,p,scrambling=1,seed=sample(1e6,1)), mean = 0, sd = sigma)
+          samp.qmc <- rbind(samp.qmc, (rep(1,J*10) %*% t(center[i,]) + noise))
+        }
+        invisible(capture.output(samp <- sp((N*J), p, dist.samp = samp.qmc)$sp))
+        samp.nn.idx <- knnx.index(data = samp.qmc, query = samp, k = 1)
+        samp <- samp.qmc[samp.nn.idx,]
+      } else {
+        stop (sprintf("invalid sampling method: %s", sampling))
+      }
+      # compute logq (deterministic mixture weight)
+      samp.dm.logwts <- matrix(0, nrow = nrow(samp), ncol = N)
+      for (i in 1:N){
+        for (j in 1:nrow(samp)){
+          dist <- samp[j,] - center[i,]
+          samp.dm.logwts[j,i] <- sum(dnorm(dist, mean = 0, sd = sigma, log = T))
+        }
+      }
+      samp.logq <- apply(samp.dm.logwts, 1, logaddexp) - log(N)
+    }
+    
+    # weighting step
+    samp.logf <- apply(samp, 1, logf)
+    samp.logf[is.na(samp.logf)] <- -Inf
+    samp.logwts <- samp.logf - samp.logq
+    samp.wts <- exp(samp.logwts - logaddexp(samp.logwts))
+    
+    # store information
+    samp.all <- rbind(samp.all, samp)
+    samp.all.logwts <- c(samp.all.logwts, samp.logwts)
+    ess[t] <- 1 / sum(samp.wts^2)
+    # print(ess[t])
+    
+    # adaptation
+    # covariance adaptation
+    if (sigma.adapt & t < steps & !(t == 1 & ini.type == 'sample')){
+      samp.dm.wts <- exp(samp.dm.logwts - (samp.logq + log(N)) %*% t(rep(1,N)))
+      sigma <- 0
+      for (i in 1:N){
+        for (j in 1:nrow(samp)){
+          sigma <- sigma + samp.wts[j] * samp.dm.wts[j,i] * sum((samp[j,] - center[i,])^2)
+        }
+      }
+      sigma <- sqrt(sigma/p)
+    }
+      
+    # center adaptation
+    if (resampling == 'multinomial'){
+      center <- samp[sample(1:length(samp.wts), N, replace = T, prob = samp.wts),]
+    } else if (resampling == 'residual'){
+      center <- samp[rs.sample(1:length(samp.wts), N, samp.wts),]
+    } else if (resampling == 'systematic'){
+      center <- samp[ss.sample(1:length(samp.wts), N, samp.wts),]
+    } else if (resampling == 'stratified'){
+      center <- samp[st.sample(1:length(samp.wts), N, samp.wts),]
+    } else if (resampling == 'sp'){
+      center <- samp[sp.sample(samp, N, samp.wts),]
+    } else {
+      stop (sprintf("invalid resampling method: %s", resampling))
+    }
+      
+    center.all <- rbind(center.all, center)
+      
+    # sigma for initial step
+    if (t == 1 & is.null(sigma)){
+      center.dist <- as.matrix(dist(center))
+      diag(center.dist) <- NA
+      sigma <- max(apply(center.dist, 1, min, na.rm = T)) / sqrt(p)
+      if (sigma == 0){
+        center.dist <- rep(1,N*J) %*% t(center[1,]) - samp
+        center.dist <- apply(center.dist, 1, function(x) sqrt(sum(x^2)))
+        center.dist[center.dist == 0] <- NA
+        sigma <- min(center.dist, na.rm = T) / sqrt(p)
+      }
+    }
+    # print(sigma)
+    
+    # visulization
+    if (visualization){
+      contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 15, main = sprintf("t = %d", t))
+      points(samp, pch = 18, cex = 0.5, col = "green")
+      points(center, pch = 16, cex = 1, col = "red")
+    }
+    
+  }
+  
+  if (output == 'estimator'){
+    # standard pmc
+    z.std <- mean(exp(samp.all.logwts))
+    samp.std.wts <- exp(samp.all.logwts - logaddexp(samp.all.logwts))
+    m.std <- c(t(samp.all) %*% samp.std.wts)
+    # weighted pmc
+    alpha <- ess / sum(ess)
+    samp.wts.logwts <- samp.all.logwts + rep(log(alpha), each = N*J) + log(steps)
+    z.wts <- mean(exp(samp.wts.logwts))
+    # normalized as a whole
+    samp.wts.wts <- exp(samp.wts.logwts - logaddexp(samp.wts.logwts))
+    m.wts1 <- c(t(samp.all) %*% samp.wts.wts)
+    # nomarlized within each iteration
+    m.wts2 <- rep(0,p)
+    for (t in 1:steps){
+      samp <- samp.all[((t-1)*N*J+1):(t*N*J),]
+      samp.logwts <- samp.all.logwts[((t-1)*N*J+1):(t*N*J)]
+      samp.wts <- exp(samp.logwts - logaddexp(samp.logwts))
+      m.wts2 <- m.wts2 + alpha[t] * c(t(samp) %*% samp.wts)
+    }
+    # last adapted sample
+    m.las <- c(apply(center, 2, mean))
+    
+    return (list(m.std = m.std,
+                 m.wts1 = m.wts1,
+                 m.wts2 = m.wts2,
+                 m.las = m.las,
+                 z.std = z.std,
+                 z.wts = z.wts))
+  } else {
+    return (list(samp.all = samp.all,
+                 samp.all.logwts = samp.all.logwts,
+                 center.all = center.all,
+                 ess = ess))
+  }
+  
 }

@@ -37,54 +37,49 @@ logf <- function(x){
   return((logsse+logeta+loggamma1+loggamma2))
 }
 
-# parameter setting
-N <- 13
-p <- 3
-J <- 7
+
+# experiment setting
+set.seed(950922)
 steps <- 7
-sigma <- 0.2
+p <- 3
+N <- 13
+J <- 7
+sampling <- "qmc"
+resampling <- "sp"
 
 # initialization
-# library(mined)
-# set.seed(950922)
-# ini <- Lattice(N, p)
-# ini[,1] <- 0.5 + 0.5 * ini[,1]
-# ini[,2] <- 0.5 + 0.5 * ini[,2]
-# ini[,3] <- 0.75 + 0.5 * ini[,3]
-# pairs(ini)
-# mean(dist(ini))
-# write.table(ini, sprintf("data/drilling_ini_%d.txt", N), 
-#             row.names = F, col.names = F, sep = "\t")
-
-
 ini <- as.matrix(read.table(sprintf("data/drilling_ini_%d.txt", N)))
+ini.logq <- NULL
+ini.label <- "center"
+#ini <- halton(N*J, p)
+#ini[,1] <- 0.5 + 0.5 * ini[,1]
+#ini[,2] <- 0.5 + 0.5 * ini[,2]
+#ini[,3] <- 0.75 + 0.5 * ini[,3]
+#ini.logq <- rep(0, N*J)
+#for (i in 1:(N*J)){
+#  ini.logq[i] <- logprior(ini[i,1], 0.5, 1, 10, 10) + 
+#    logprior(ini[i,2], 0.5, 1, 10, 100) + logprior(ini[i,3], 0.75, 1.25, 10, 10)
+#}
+#ini.label <- "sample"
 
-# Support Points
-set.seed(950922)
-pmc.sp <- pmc(ini, logf, J, steps, sigma, resample = "SP", output = 'raw',
-              sigma.adapt = T, qmc = T, visualization = F)
+# variance
+sigma <- NULL
+sigma.adapt <- T
+sigma.label <- "adapt"
 
-write.table(pmc.sp$ini.all, "results/drilling/pmc_sp_ini.txt", row.names = F, col.names = F, sep = "\t")
-write.table(pmc.sp$samp.all, "results/drilling/pmc_sp_samp.txt", row.names = F, col.names = F, sep = "\t")
-write.table(matrix(pmc.sp$samp.all.logwts, ncol = 1), "results/drilling/pmc_sp_samplogwts.txt", row.names = F, col.names = F)
-write.table(matrix(pmc.sp$ess, ncol = 1), "results/drilling/pmc_sp_ess.txt", row.names = F, col.names = F)
-
-# Multinomial
-set.seed(950922)
-pmc.mn <- pmc(ini, logf, J, steps, sigma, resample = "Multinomial", output = 'raw',
-              sigma.adapt = T, qmc = T, visualization = F)
-
-write.table(pmc.mn$ini.all, "results/drilling/pmc_mn_ini.txt", row.names = F, col.names = F, sep = "\t")
-write.table(pmc.mn$samp.all, "results/drilling/pmc_mn_samp.txt", row.names = F, col.names = F, sep = "\t")
-write.table(matrix(pmc.mn$samp.all.logwts, ncol = 1), "results/drilling/pmc_mn_samplogwts.txt", row.names = F, col.names = F)
-write.table(matrix(pmc.mn$ess, ncol = 1), "results/drilling/pmc_mn_ess.txt", row.names = F, col.names = F)
-
-# Systematic
-set.seed(950922)
-pmc.ss <- pmc(ini, logf, J, steps, sigma, resample = "Systematic", output = 'raw',
-              sigma.adapt = T, qmc = T, visualization = F)
-
-write.table(pmc.ss$ini.all, "results/drilling/pmc_ss_ini.txt", row.names = F, col.names = F, sep = "\t")
-write.table(pmc.ss$samp.all, "results/drilling/pmc_ss_samp.txt", row.names = F, col.names = F, sep = "\t")
-write.table(matrix(pmc.ss$samp.all.logwts, ncol = 1), "results/drilling/pmc_ss_samplogwts.txt", row.names = F, col.names = F)
-write.table(matrix(pmc.ss$ess, ncol = 1), "results/drilling/pmc_ss_ess.txt", row.names = F, col.names = F)
+pmc.output <- pmc(logf, N, J, steps, ini, ini.logq, 
+                  sampling = sampling, resampling = resampling, output = 'raw',
+                  sigma = sigma, sigma.adapt = sigma.adapt, visualization = F)
+output.label <- sprintf('%s_%s_%s_%s', sampling, resampling, ini.label, sigma.label)
+write.table(pmc.output$samp.all, 
+            sprintf("results/drilling/pmc_%s_samp.txt", output.label),
+            row.names = F, col.names = F, sep = "\t")
+write.table(matrix(pmc.output$samp.all.logwts, ncol = 1), 
+            sprintf("results/drilling/pmc_%s_samp_logwts.txt", output.label),
+            row.names = F, col.names = F)
+write.table(pmc.output$center.all, 
+            sprintf("results/drilling/pmc_%s_center.txt", output.label),
+            row.names = F, col.names = F, sep = "\t")
+write.table(matrix(pmc.output$ess, ncol = 1), 
+            sprintf("results/drilling/pmc_%s_ess.txt", output.label),
+            row.names = F, col.names = F)

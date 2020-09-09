@@ -1,6 +1,6 @@
 # load library
 source("scripts/lib.R")
-source("lib.R")
+# source("lib.R")
 library(mvtnorm)
 library(randtoolbox)
 
@@ -25,85 +25,124 @@ logmixture <- function(x){
   return (logf)
 }
 
+logbanana <- function(x)
+{
+  if (any(x < 0)||any(x > 1)) return (log(0))
+  lower1 <- -40
+  upper1 <- 40
+  lower2 <- -25
+  upper2 <- 10
+  theta1 <- lower1+(upper1-lower1)*x[1]
+  theta2 <- lower2+(upper2-lower2)*x[2]+.03*theta1^2-3
+  val <- -.5*(theta1^2/100+theta2^2)
+  return(val)
+}
+
+# compute expectation by grid for banana shape distribution
+# grid-based result
+# library(cubature)
+# banana <- function(x){
+#   return (exp(logbanana(x)))
+# }
+# x1 <- x2 <- seq(0, 1, length = 1000)
+# denom <- adaptIntegrate(banana, c(0,0),c(1,1))$int # 0.0223886
+# f1 <- function(theta1) apply(cbind(theta1, theta2), 1, banana)
+# f1.val <- rep(NA, 1000)
+# for (i in 1:1000){
+#   theta2 <- x2[i]
+#   f1.val[i] <- integrate(f1, 0, 1)$val
+# }
+# f1.val <- f1.val / denom
+# f1.val <- f1.val / sum(f1.val) * 1000
+# mean(f1.val * x1) # 0.7162834
+# f2 <- function(theta2) apply(cbind(theta1, theta2), 1, banana)
+# f2.val <- rep(NA, 1000)
+# for (i in 1:1000){
+#   theta1 <- x1[i]
+#   f2.val[i] <- integrate(f2, 0, 1)$val
+# }
+# f2.val <- f2.val / denom
+# f2.val <- f2.val / sum(f2.val) * 1000
+# mean(f2.val * x2) # 0.5
+
+# target distribution
+logf <- logmixture
+expectation <- 0.5 + c(1.6,1.4) / 40
+z <- 1
+logf.label <- "mixture"
+# logf <- logbanana
+# expectation <- c(0.5,0.7162834)
+# z <- 0.0223886
+# logf.label <- "banana"
+
 # experiment setting
 set.seed(950922)
-expectation <- 0.5 + c(1.6,1.4) / 40
 runs <- 2
-steps <- 8
+steps <- 10
 p <- 2
-N <- 25 # 25, 50
-J <- 10 # 10, 5
-sample <- "sp" # random / qmc / sp
-resample <- "sp" # multinomial / systematic / sp
+N <- 25 
+J <- 40 
+sampling <- "qmc" # random / qmc / sp / msp
+resampling <- "sp" # multinomial / systematic / sp
+
+# initialization
 ini <- sobol(N, p)
-ini.label <- "full"
-# ini <- 0.4 + 0.2 * sobol(N, p)
-# ini.label <- "sub"
+ini.logq <- NULL
+ini.label <- "center"
+# ini <- halton(N*J, p)
+# ini.logq <- rep(0, N*J)
+# ini.label <- "sample"
 
-#pmc.output <- pmc.sp(ini, logmixture, J, steps, 0.2, visualization = T)
-#pmc.output <- pmc(ini, logmixture, J, steps, 0.5, sample = sample,
-#                  resample = resample, sigma.adapt = T, visualization = T)
-#log(mean((pmc.output$m.std - expectation)^2))
-#log(mean((pmc.output$m.wts - expectation)^2))
-#log(mean((pmc.output$m.las - expectation)^2))
-#log((pmc.output$z.std - 1)^2)
-#log((pmc.output$z.wts - 1)^2)
+# variance
+sigma <- 0.2
+sigma.adapt <- T
+sigma.label <- "0.2_adapt"
 
-stds <- c(0.1,0.2,0.5)
-if (sample == "sp" | resample == "sp"){
-  adaptation <- c(TRUE)
-  adaptation.label <- c("adapt")
-} else {
-  adaptation <- c(TRUE, FALSE)
-  adaptation.label <- c("adapt","regular")
+# store results
+m.std <- rep(0, runs)
+m.wts1 <- rep(0, runs)
+m.wts2 <- rep(0, runs)
+m.las <- rep(0, runs)
+z.std <- rep(0, runs)
+z.wts <- rep(0, runs)
+times <- rep(0, runs)
+
+# experiment
+for (k in 1:runs){
+  start.time <- Sys.time()
+  pmc.output <- pmc(logf, N, J, steps, ini, ini.logq, 
+                    sampling = sampling, resampling = resampling, 
+                    sigma = sigma, sigma.adapt = sigma.adapt, visualization = F)
+  end.time <- Sys.time()
+  times[k] <- as.numeric((end.time - start.time), units = "secs")
+  m.std[k] <- log(mean((pmc.output$m.std - expectation)^2))
+  m.wts1[k] <- log(mean((pmc.output$m.wts1 - expectation)^2))
+  m.wts2[k] <- log(mean((pmc.output$m.wts2 - expectation)^2))
+  m.las[k] <- log(mean((pmc.output$m.las - expectation)^2))
+  z.std[k] <- log((pmc.output$z.std - z)^2)
+  z.wts[k] <- log((pmc.output$z.wts - z)^2)
+  
+  # save log
+  log.file <- sprintf("results/pmc_2d/log_%s_%d_%d_%d_%s_%s_%s_%s.txt",
+                      logf.label,N,J,steps,sampling,resampling,ini.label,sigma.label)
+  sink(log.file)
+  cat(sprintf("run: %d\n", k))
+  cat(sprintf("m.std: %.3f\n", m.std[k]))
+  cat(sprintf("m.wts1: %.3f\n", m.wts1[k]))
+  cat(sprintf("m.wts2: %.3f\n", m.wts2[k]))
+  cat(sprintf("time: %.3f\n", times[k]))
+  sink()
 }
-
-for (i in 1:length(adaptation)){
-  for (j in 1:length(stds)){
-    sigma <- stds[j]
-    # store results
-    m.std <- rep(0, runs)
-    m.wts <- rep(0, runs)
-    m.las <- rep(0, runs)
-    z.std <- rep(0, runs)
-    z.wts <- rep(0, runs)
-    times <- rep(0, runs)
-    # experiment
-    for (k in 1:runs){
-      start.time <- Sys.time()
-      pmc.output <- pmc(ini, logmixture, J, steps, sigma, 
-                        sample = sample, resample = resample, 
-                        sigma.adapt = adaptation[i], visualization = F)
-      end.time <- Sys.time()
-      times[k] <- as.numeric((end.time - start.time), units = "secs")
-      m.std[k] <- log(mean((pmc.output$m.std - expectation)^2))
-      m.wts[k] <- log(mean((pmc.output$m.wts - expectation)^2))
-      m.las[k] <- log(mean((pmc.output$m.las - expectation)^2))
-      z.std[k] <- log((pmc.output$z.std - 1)^2)
-      z.wts[k] <- log((pmc.output$z.wts - 1)^2)
-      
-      # save log
-      log.file <- sprintf("results/pmc_2d/log_%d_%s_%s_%s.txt",
-                          N,sample,resample,ini.label)
-      sink(log.file)
-      cat(sprintf("N: %d\n", N))
-      cat(sprintf("J: %d\n", J))
-      cat(sprintf("sigma: %.1f\n", sigma))
-      cat(sprintf("adaptation: %s\n", adaptation.label[i]))
-      cat(sprintf("run: %d\n", k))
-      sink()
-    }
-    # save output
-    logmse <- data.frame(
-      m.std,
-      m.wts,
-      m.las,
-      z.std,
-      z.wts,
-      times
-    )
-    file <- sprintf("results/pmc_2d/pmc_2d_%d_%d_%d_%.1f_%s_%s_%s_%s.csv", 
-                    N, J, steps, sigma, sample, resample, ini.label, adaptation.label[i])
-    write.csv(logmse, file, row.names = F)
-  }
-}
+# save output
+logmse <- data.frame(
+  m.std,
+  m.wts1,
+  m.wts2,
+  m.las,
+  z.std,
+  z.wts,
+  times
+)
+file <- sprintf("results/pmc_2d/pmc_%s_%d_%d_%d_%s_%s_%s_%s.csv", 
+                logf.label, N, J, steps, sampling, resampling, ini.label, sigma.label)
+write.csv(logmse, file, row.names = F)

@@ -1,5 +1,6 @@
 # load library
 source("scripts/lib.R")
+# source("lib.R")
 library(mvtnorm)
 library(randtoolbox)
 
@@ -14,98 +15,85 @@ logmixture <- function(x){
   return (logf)
 }
 
-p <- 20
+# experimental setting
+p <- 15
+expectation <- 0.5 + rep(4/3, p) / 40
 runs <- 100
 steps <- 10
-N <- 50
+N <- 50 
 J <- 40
-sigma <- 0.2
+sampling <- "qmc" # random / qmc / sp / msp
+resampling <- "sp" # multinomial / residual / systematic / stratified / sp
+
+# initialization
+ini.label <- "center"
+# ini.label <- "sample"
+
+# variance
+sigma <- NULL
+sigma.adapt <- T
+sigma.label <- "adapt"
+
+dir.create(sprintf("results/pmc_hd/mixture_%s_%s_%s_%s/", 
+                   sampling, resampling, ini.label, sigma.label))
 
 for (d in 2:p){
-  print(d)
   set.seed(950922)
   expectation <- 0.5 + rep(4/3, d) / 40
-  ini <- sobol(N, d)
+  ini <- sobol(N, p)
+  ini.logq <- NULL
+  #ini <- halton(N*J, d)
+  #ini.logq <- rep(0, N*J)
+  
   # store results
-  mn.m.std <- rep(0,runs)
-  mn.m.wts <- rep(0,runs)
-  mn.z.std <- rep(0,runs)
-  mn.z.wts <- rep(0,runs)
-  mn.times <- rep(0,runs)
-  ss.m.std <- rep(0,runs)
-  ss.m.wts <- rep(0,runs)
-  ss.z.std <- rep(0,runs)
-  ss.z.wts <- rep(0,runs)
-  ss.times <- rep(0,runs)
-  sp.m.std <- rep(0,runs)
-  sp.m.wts <- rep(0,runs)
-  sp.m.las <- rep(0,runs)
-  sp.z.std <- rep(0,runs)
-  sp.z.wts <- rep(0,runs)
-  sp.times <- rep(0,runs)
+  m.std <- rep(0, runs)
+  m.wts1 <- rep(0, runs)
+  m.wts2 <- rep(0, runs)
+  m.las <- rep(0, runs)
+  z.std <- rep(0, runs)
+  z.wts <- rep(0, runs)
+  times <- rep(0, runs)
+  
+  # experiment
   for (k in 1:runs){
-    # multinomial
-    print("multinomial")
     start.time <- Sys.time()
-    pmc.mn <- pmc(ini, logmixture, J, steps, sigma, resample = "Multinomial",
-                  sigma.adapt = T, qmc = T, visualization = F)
-    mn.times[k] <- as.numeric((Sys.time() - start.time), units = "secs")
-    mn.m.std[k] <- log(mean((pmc.mn$m.std - expectation)^2))
-    mn.m.wts[k] <- log(mean((pmc.mn$m.wts - expectation)^2))
-    mn.z.std[k] <- log((pmc.mn$z.std - 1)^2)
-    mn.z.wts[k] <- log((pmc.mn$z.wts - 1)^2)
-    
-    # systematic
-    print("systematic")
-    start.time <- Sys.time()
-    pmc.ss <- pmc(ini, logmixture, J, steps, sigma, resample = "Systematic",
-                  sigma.adapt = T, qmc = T,  visualization = F)
-    ss.times[k] <- as.numeric((Sys.time() - start.time), units = "secs")
-    ss.m.std[k] <- log(mean((pmc.ss$m.std - expectation)^2))
-    ss.m.wts[k] <- log(mean((pmc.ss$m.wts - expectation)^2))
-    ss.z.std[k] <- log((pmc.ss$z.std - 1)^2)
-    ss.z.wts[k] <- log((pmc.ss$z.wts - 1)^2)
-    
-    # sp
-    print("sp")
-    start.time <- Sys.time()
-    pmc.sp <- pmc(ini, logmixture, J, steps, sigma, resample = "SP",
-                  sigma.adapt = T, qmc = T, visualization = F)
-    sp.times[k] <- as.numeric((Sys.time() - start.time), units = "secs")
-    sp.m.std[k] <- log(mean((pmc.sp$m.std - expectation)^2))
-    sp.m.wts[k] <- log(mean((pmc.sp$m.wts - expectation)^2))
-    sp.m.las[k] <- log(mean((pmc.sp$m.las - expectation)^2))
-    sp.z.std[k] <- log((pmc.sp$z.std - 1)^2)
-    sp.z.wts[k] <- log((pmc.sp$z.wts - 1)^2)
+    pmc.output <- pmc(logmixture, N, J, steps, ini, ini.logq, 
+                      sampling = sampling, resampling = resampling, 
+                      sigma = sigma, sigma.adapt = sigma.adapt, visualization = F)
+    end.time <- Sys.time()
+    times[k] <- as.numeric((end.time - start.time), units = "secs")
+    m.std[k] <- log(mean((pmc.output$m.std - expectation)^2))
+    m.wts1[k] <- log(mean((pmc.output$m.wts1 - expectation)^2))
+    m.wts2[k] <- log(mean((pmc.output$m.wts2 - expectation)^2))
+    m.las[k] <- log(mean((pmc.output$m.las - expectation)^2))
+    z.std[k] <- log((pmc.output$z.std - 1)^2)
+    z.wts[k] <- log((pmc.output$z.wts - 1)^2)
     
     # save log
-    sink("results/pmc_hd/log.txt")
-    cat(sprintf("N: %d\n", N))
-    cat(sprintf("J: %d\n", J))
-    cat(sprintf("P: %d\n", d))
-    cat(sprintf("sigma: %.1f\n", sigma))
+    log.file <- sprintf("results/pmc_hd/log_mixture_%d_%d_%d_%s_%s_%s_%s.txt",
+                        N,J,steps,sampling,resampling,ini.label,sigma.label)
+    sink(log.file)
+    cat(sprintf("dimension:%d\n", d))
     cat(sprintf("run: %d\n", k))
+    cat(sprintf("m.std: %.3f\n", m.std[k]))
+    cat(sprintf("m.wts1: %.3f\n", m.wts1[k]))
+    cat(sprintf("m.wts2: %.3f\n", m.wts2[k]))
+    cat(sprintf("time: %.3f\n", times[k]))
     sink()
   }
+  
   # save output
   logmse <- data.frame(
-    mn.m.std,
-    mn.m.wts,
-    mn.z.std,
-    mn.z.wts,
-    mn.times,
-    ss.m.std,
-    ss.m.wts,
-    ss.z.std,
-    ss.z.wts,
-    ss.times,
-    sp.m.std,
-    sp.m.wts,
-    sp.m.las,
-    sp.z.std,
-    sp.z.wts,
-    sp.times
+    m.std,
+    m.wts1,
+    m.wts2,
+    m.las,
+    z.std,
+    z.wts,
+    times
   )
-  file <- sprintf("results/pmc_hd/pmc_%dd_%d_%d_%d_%.1f_full_adapt.csv", d, N, J, steps, sigma)
+  file <- sprintf("results/pmc_hd/mixture_%s_%s_%s_%s/pmc_%dd_%d_%d_%d.txt", 
+                  sampling, resampling, ini.label, sigma.label, d, N, J, steps)
   write.csv(logmse, file, row.names = F)
+  
 }

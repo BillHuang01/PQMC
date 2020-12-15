@@ -81,9 +81,9 @@ points(st.samp, pch = 16, cex = 1, col = "red")
 ss.samp <- samp[ss.sample(1:N, n, prob=samp.wts),]
 contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "Systematic")
 points(ss.samp, pch = 16, cex = 1, col = "red")
-# Support Points resampling
+# Importance Support Points resampling
 sp.samp <- samp[sp.sample(samp, n, prob=samp.wts),]
-contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "SP")
+contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "ISP")
 points(sp.samp, pch = 16, cex = 1, col = "red")
 ```
 
@@ -189,7 +189,7 @@ log((pmc.ss$z.wts - Z)^2)
 
     ## [1] -7.761437
 
-### PQMC (Support Points)
+### PQMC (Importance Support Points)
 
 ``` r
 layout(matrix(c(1:6), nrow = 2, byrow = T))
@@ -352,7 +352,7 @@ log((pmc.ss$z.wts - Z)^2)
 
     ## [1] -20.05266
 
-### PQMC (Support Points)
+### PQMC (Importance Support Points)
 
 ``` r
 layout(matrix(c(1:6), nrow = 2, byrow = T))

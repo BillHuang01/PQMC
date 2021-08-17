@@ -7,7 +7,7 @@ output: rmarkdown::github_document
 Let us first load the required libraries and scripts.
 
 ```{r library, message = F, warning = F}
-set.seed(090820)
+set.seed(20210816)
 source("scripts/lib.R")
 library(mvtnorm)
 library(randtoolbox)
@@ -47,11 +47,11 @@ contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15)
 ```
 
 ## Resampling Method Comparsion
-Consider resmaple n = 25 points from 2500 Sobol points over the unit square as importance samples for the mixture of normals using Multinomial, Residual, Stratified, Systematic, and Support Points.
+Consider resmaple n = 100 points from 10000 Sobol points over the unit square as importance samples for the mixture of normals using multinomial, residual, Hilbert curve sorted systematic, Hilbert curve sorted stratified, and importance support points (ISP).
 
 ```{r resample, message = F, warning = F, fig.height = 6, fig.width = 9}
-n <- 25
-N <- 2500
+n <- 100
+N <- 10000
 layout(matrix(c(1:6), nrow = 2, byrow = T))
 # Sobol points
 samp <- sobol(N, 2)
@@ -61,53 +61,57 @@ points(samp, pch = 18, cex = 0.5, col = "green")
 samp.logwts <- apply(samp, 1, logmixture)
 samp.wts <- exp(samp.logwts - max(samp.logwts))
 samp.wts <- samp.wts / sum(samp.wts)
-# Multinomial resampling
-mn.samp <- samp[sample(1:N, n, replace=T, prob=samp.wts),]
+# multinomial resampling
+mn.samp <- samp[mn.sample(samp, n, prob=samp.wts),]
 contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "Multinomial")
 points(mn.samp, pch = 16, cex = 1, col = "red")
-# Residual resampling
-rs.samp <- samp[rs.sample(1:N, n, prob=samp.wts),]
+# residual resampling
+rs.samp <- samp[rs.sample(samp, n, prob=samp.wts),]
 contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "Residual")
 points(mn.samp, pch = 16, cex = 1, col = "red")
-# Stratified resampling
-st.samp <- samp[st.sample(1:N, n, prob=samp.wts),]
-contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "Stratified")
-points(st.samp, pch = 16, cex = 1, col = "red")
-# Systematic resampling
-ss.samp <- samp[ss.sample(1:N, n, prob=samp.wts),]
+# Hilbert curve sorted systematic resampling
+ss.samp <- samp[ss.sample(samp, n, prob=samp.wts),]
 contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "Systematic")
 points(ss.samp, pch = 16, cex = 1, col = "red")
-# Importance Support Points resampling
-sp.samp <- samp[sp.sample(samp, n, prob=samp.wts),]
+# Hilbert curve sorted stratified resampling
+st.samp <- samp[st.sample(samp, n, prob=samp.wts),]
+contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "Stratified")
+points(st.samp, pch = 16, cex = 1, col = "red")
+# Importance Support Points (ISP) resampling
+isp.samp <- samp[sp.sample(samp, n, prob=samp.wts),]
 contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15, main = "ISP")
-points(sp.samp, pch = 16, cex = 1, col = "red")
+points(isp.samp, pch = 16, cex = 1, col = "red")
 ```
 
 ## PQMC vs. PMC on Mixture of Normals
 
-Let us now run PMC and PQMC on the mixture of five normals with N = 50, J = 20, and T = 6. The initial centers are the 50 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting.
+Let us now run PMC and PQMC on the mixture of five normals with K = 50, J = 20, and T = 8. The initial centers are the 50 Sobol points over the unit square. Adaptation for covariance is applied for PQMC only. Here follows the parameter setting.
 
-```{r pmc-mixture-setting, warning = F, message = F}
+```{r mixture-setting, warning = F, message = F}
 expectation <- 0.5 + c(1.6,1.4) / 40 # E[X]
 Z <- 1 # normalizing constant
 p <- 2 # dimensions
-N <- 50 # number of propopsals
+K <- 50 # number of propopsals
 J <- 20 # number of samples drawn from each proposal
-steps <- 6 # number of PMC iterations
+steps <- 8 # number of PMC iterations
 # initilization
-ini <- sobol(N, p) # initial centers
-ini.logq <- NULL
-# variance
+ini <- sobol(K, p) # initial centers
+# initial covariance
 sigma <- 0.2 # initial covariance
-sigma.adapt <- T # adaptation for covariance
 ```
 
 ### PMC (Multinomial)
-```{r pmc-mixture-mn, warning = F, message = F, fig.height = 6, fig.width = 9}
-layout(matrix(c(1:6), nrow = 2, byrow = T))
-pmc.mn <- pmc(logmixture, N, J, steps, ini, ini.logq,
-              sampling = "random", resampling = "multinomial",
-              sigma = sigma, sigma.adapt = sigma.adapt, visualization = T)
+```{r pmc-mixture-mn, warning = F, message = F, fig.height = 9, fig.width = 9}
+# setting
+sampling <- "random"
+resampling <- "multinomial"
+sigma.adapt <- FALSE
+# call pmc function
+layout(matrix(c(1:9), nrow = 3, byrow = T))
+pmc.mn <- pmc(logmixture, K, J, steps, ini, 
+              sampling = sampling, resampling = resampling, 
+              sigma = sigma, sigma.adapt = sigma.adapt,
+              visualization = T)
 # log MSE of E[X] by standard PMC estimator
 log(mean((pmc.mn$m.std - expectation)^2))
 # log MSE of E[X] by weighted PMC estimator
@@ -118,39 +122,95 @@ log((pmc.mn$z.std - Z)^2)
 log((pmc.mn$z.wts - Z)^2)
 ```
 
-### PMC (Systematic)
-```{r pmc-mixture-ss, warning = F, message = F, fig.height = 6, fig.width = 9}
-layout(matrix(c(1:6), nrow = 2, byrow = T))
-pmc.ss <- pmc(logmixture, N, J, steps, ini, ini.logq,
-              sampling = "random", resampling = "systematic",
-              sigma = sigma, sigma.adapt = sigma.adapt, visualization = T)
+### PMC (Residual)
+```{r pmc-mixture-rs, warning = F, message = F, fig.height = 9, fig.width = 9}
+# setting
+sampling <- "random"
+resampling <- "residual"
+sigma.adapt <- FALSE
+# call pmc function
+layout(matrix(c(1:9), nrow = 3, byrow = T))
+pmc.rs <- pmc(logmixture, K, J, steps, ini, 
+              sampling = sampling, resampling = resampling, 
+              sigma = sigma, sigma.adapt = sigma.adapt,
+              visualization = T)
 # log MSE of E[X] by standard PMC estimator
-log(mean((pmc.ss$m.std - expectation)^2))
+log(mean((pmc.rs$m.std - expectation)^2))
 # log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.ss$m.wts - expectation)^2))
+log(mean((pmc.rs$m.wts - expectation)^2))
 # log MSE of Z by standard PMC estimator
-log((pmc.ss$z.std - Z)^2)
+log((pmc.rs$z.std - Z)^2)
 # log MSE of Z by weighted PMC estimator
-log((pmc.ss$z.wts - Z)^2)
+log((pmc.rs$z.wts - Z)^2)
 ```
 
-### PQMC (Importance Support Points)
-```{r pqmc-mixture-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
-layout(matrix(c(1:6), nrow = 2, byrow = T))
-pqmc.sp <- pmc(logmixture, N, J, steps, ini, ini.logq,
-               sampling = "qmc", resampling = "sp",
-               sigma = sigma, sigma.adapt = sigma.adapt, visualization = T)
+### PQMC (Systematic + Lookback)
+```{r pqmc-mixture-ss, warning = F, message = F, fig.height = 9, fig.width = 9}
+# setting
+sampling <- "qmc"
+resampling <- "systematic"
+sigma.adapt <- TRUE # lookback covariance adaptation
+# call pmc function
+layout(matrix(c(1:9), nrow = 3, byrow = T))
+pqmc.ss <- pmc(logmixture, K, J, steps, ini, 
+               sampling = sampling, resampling = resampling, 
+               sigma = sigma, sigma.adapt = sigma.adapt,
+               visualization = T)
 # log MSE of E[X] by standard PMC estimator
-log(mean((pqmc.sp$m.std - expectation)^2))
+log(mean((pqmc.ss$m.std - expectation)^2))
 # log MSE of E[X] by weighted PMC estimator
-log(mean((pqmc.sp$m.wts - expectation)^2))
+log(mean((pqmc.ss$m.wts - expectation)^2))
 # log MSE of Z by standard PMC estimator
-log((pqmc.sp$z.std - Z)^2)
+log((pqmc.ss$z.std - Z)^2)
 # log MSE of Z by weighted PMC estimator
-log((pqmc.sp$z.wts - Z)^2)
+log((pqmc.ss$z.wts - Z)^2)
 ```
 
-## PQMC vs. PMC on Banana Shape Distribution
+### PQMC (Stratified + Lookback)
+```{r pqmc-mixture-st, warning = F, message = F, fig.height = 9, fig.width = 9}
+# setting
+sampling <- "qmc"
+resampling <- "stratified"
+sigma.adapt <- TRUE # lookback covariance adaptation
+# call pmc function
+layout(matrix(c(1:9), nrow = 3, byrow = T))
+pqmc.st <- pmc(logmixture, K, J, steps, ini, 
+               sampling = sampling, resampling = resampling, 
+               sigma = sigma, sigma.adapt = sigma.adapt,
+               visualization = T)
+# log MSE of E[X] by standard PMC estimator
+log(mean((pqmc.st$m.std - expectation)^2))
+# log MSE of E[X] by weighted PMC estimator
+log(mean((pqmc.st$m.wts - expectation)^2))
+# log MSE of Z by standard PMC estimator
+log((pqmc.st$z.std - Z)^2)
+# log MSE of Z by weighted PMC estimator
+log((pqmc.st$z.wts - Z)^2)
+```
+
+### PQMC (ISP + Lookback)
+```{r pqmc-mixture-isp, warning = F, message = F, fig.height = 9, fig.width = 9}
+# setting
+sampling <- "qmc"
+resampling <- "sp"
+sigma.adapt <- TRUE # lookback covariance adaptation
+# call pmc function
+layout(matrix(c(1:9), nrow = 3, byrow = T))
+pqmc.isp <- pmc(logmixture, K, J, steps, ini, 
+                sampling = sampling, resampling = resampling, 
+                sigma = sigma, sigma.adapt = sigma.adapt,
+                visualization = T)
+# log MSE of E[X] by standard PMC estimator
+log(mean((pqmc.isp$m.std - expectation)^2))
+# log MSE of E[X] by weighted PMC estimator
+log(mean((pqmc.isp$m.wts - expectation)^2))
+# log MSE of Z by standard PMC estimator
+log((pqmc.isp$z.std - Z)^2)
+# log MSE of Z by weighted PMC estimator
+log((pqmc.isp$z.wts - Z)^2)
+```
+
+## PQMC on Banana Shape Distribution
 Here is the contour of the banana shape distribution.
 ```{r banana, message = F, warning = F, fig.height = 4.5, fig.width = 4.5}
 logbanana <- function(x)
@@ -171,68 +231,40 @@ density <- matrix(exp(apply(x.grid, 1, logbanana)), 101, 101)
 contour.default(x = x1, y = x2, z = density, drawlabels = F, nlevels = 15)
 ```
 
-Let us now run PMC and PQMC on the mixture of five normals with N = 50, J = 20, and T = 6. The initial centers are the 50 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting.
+Let us now run PQMC on the banana shaped distribution with K = 50, J = 20, and T = 8. The initial centers are the 50 Sobol points over the unit square. Adaptation for covariance is applied. Here follows the parameter setting.
 
-```{r pmc-banana-setting, warning = F, message = F}
+```{r banana-setting, warning = F, message = F}
 expectation <- c(0.5,0.7162834) # E[X]
 Z <- 0.0223886 # normalizing constant
 # Above computed from grid approximation
 p <- 2 # dimensions
-N <- 50 # number of propopsals
+K <- 50 # number of propopsals
 J <- 20 # number of samples drawn from each proposal
-steps <- 6 # number of PMC iterations
+steps <- 8 # number of PMC iterations
 # initilization
-ini <- sobol(N, p) # initial centers
-ini.logq <- NULL
+ini <- sobol(K, p) # initial centers
 # variance
 sigma <- 0.2 # initial covariance
-sigma.adapt <- T # adaptation for covariance
 ```
 
-### PMC (Multinomial)
-```{r pmc-banana-mn, warning = F, message = F, fig.height = 6, fig.width = 9}
-layout(matrix(c(1:6), nrow = 2, byrow = T))
-pmc.mn <- pmc(logbanana, N, J, steps, ini, ini.logq,
-              sampling = "random", resampling = "multinomial",
-              sigma = sigma, sigma.adapt = sigma.adapt, visualization = T)
+### PQMC (ISP + Lookback)
+```{r pqmc-banana-isp, warning = F, message = F, fig.height = 9, fig.width = 9}
+# setting
+sampling <- "qmc"
+resampling <- "sp"
+sigma.adapt <- TRUE # lookback covariance adaptation
+# call pmc function
+layout(matrix(c(1:9), nrow = 3, byrow = T))
+pqmc.isp <- pmc(logbanana, K, J, steps, ini, 
+                sampling = sampling, resampling = resampling, 
+                sigma = sigma, sigma.adapt = sigma.adapt,
+                visualization = T)
 # log MSE of E[X] by standard PMC estimator
-log(mean((pmc.mn$m.std - expectation)^2))
+log(mean((pqmc.isp$m.std - expectation)^2))
 # log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.mn$m.wts - expectation)^2))
+log(mean((pqmc.isp$m.wts - expectation)^2))
 # log MSE of Z by standard PMC estimator
-log((pmc.mn$z.std - Z)^2)
+log((pqmc.isp$z.std - Z)^2)
 # log MSE of Z by weighted PMC estimator
-log((pmc.mn$z.wts - Z)^2)
-```
-
-### PMC (Systematic)
-```{r pmc-banana-ss, warning = F, message = F, fig.height = 6, fig.width = 9}
-layout(matrix(c(1:6), nrow = 2, byrow = T))
-pmc.ss <- pmc(logbanana, N, J, steps, ini, ini.logq,
-              sampling = "random", resampling = "systematic",
-              sigma = sigma, sigma.adapt = sigma.adapt, visualization = T)
-# log MSE of E[X] by standard PMC estimator
-log(mean((pmc.ss$m.std - expectation)^2))
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pmc.ss$m.wts - expectation)^2))
-# log MSE of Z by standard PMC estimator
-log((pmc.ss$z.std - Z)^2)
-# log MSE of Z by weighted PMC estimator
-log((pmc.ss$z.wts - Z)^2)
-```
-
-### PQMC (Importance Support Points)
-```{r pqmc-banana-sp, warning = F, message = F, fig.height = 6, fig.width = 9}
-layout(matrix(c(1:6), nrow = 2, byrow = T))
-pqmc.sp <- pmc(logbanana, N, J, steps, ini, ini.logq,
-               sampling = "qmc", resampling = "sp",
-               sigma = sigma, sigma.adapt = sigma.adapt, visualization = T)
-# log MSE of E[X] by standard PMC estimator
-log(mean((pqmc.sp$m.std - expectation)^2))
-# log MSE of E[X] by weighted PMC estimator
-log(mean((pqmc.sp$m.wts - expectation)^2))
-# log MSE of Z by standard PMC estimator
-log((pqmc.sp$z.std - Z)^2)
-# log MSE of Z by weighted PMC estimator
-log((pqmc.sp$z.wts - Z)^2)
+log((pqmc.isp$z.wts - Z)^2)
 ```

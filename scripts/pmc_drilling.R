@@ -1,3 +1,8 @@
+# read in arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2) stop("two arguments has to be provided!")
+
+# load library
 source("scripts/lib.R")
 library(GPfit)
 library(randtoolbox)
@@ -37,49 +42,38 @@ logf <- function(x){
   return((logsse+logeta+loggamma1+loggamma2))
 }
 
-
 # experiment setting
-set.seed(950922)
+set.seed(20210522)
 steps <- 7
 p <- 3
-N <- 13
+K <- 13
 J <- 7
-sampling <- "qmc"
-resampling <- "sp"
+sampling <- args[1]
+resampling <- args[2]
 
 # initialization
-ini <- as.matrix(read.table(sprintf("data/drilling_ini_%d.txt", N)))
-ini.logq <- NULL
-ini.label <- "center"
-#ini <- halton(N*J, p)
-#ini[,1] <- 0.5 + 0.5 * ini[,1]
-#ini[,2] <- 0.5 + 0.5 * ini[,2]
-#ini[,3] <- 0.75 + 0.5 * ini[,3]
-#ini.logq <- rep(0, N*J)
-#for (i in 1:(N*J)){
-#  ini.logq[i] <- logprior(ini[i,1], 0.5, 1, 10, 10) + 
-#    logprior(ini[i,2], 0.5, 1, 10, 100) + logprior(ini[i,3], 0.75, 1.25, 10, 10)
-#}
-#ini.label <- "sample"
-
+ini <- as.matrix(read.table(sprintf("data/drilling_ini_%d.txt", K)))
 # variance
-sigma <- NULL
+sigma <- 0.2
 sigma.adapt <- T
-sigma.label <- "adapt"
+sigma.label <- "0.2_adapt"
 
-pmc.output <- pmc(logf, N, J, steps, ini, ini.logq, 
-                  sampling = sampling, resampling = resampling, output = 'raw',
-                  sigma = sigma, sigma.adapt = sigma.adapt, visualization = F)
-output.label <- sprintf('%s_%s_%s_%s', sampling, resampling, ini.label, sigma.label)
+pmc.output <- pmc(logf, K, J, steps, ini, 
+                  sampling = sampling, resampling = resampling, 
+                  sigma = sigma, sigma.adapt = sigma.adapt, 
+                  output = 'raw', visualization = F)
+
+output.label <- sprintf('%s_%d_%d_%d_%s_%s_%s', "drilling", K, J, steps,
+                        sampling, resampling, sigma.label)
 write.table(pmc.output$samp.all, 
             sprintf("results/drilling/pmc_%s_samp.txt", output.label),
             row.names = F, col.names = F, sep = "\t")
 write.table(matrix(pmc.output$samp.all.logwts, ncol = 1), 
             sprintf("results/drilling/pmc_%s_samp_logwts.txt", output.label),
-            row.names = F, col.names = F)
+            row.names = F, col.names = F, sep = "\t")
 write.table(pmc.output$center.all, 
             sprintf("results/drilling/pmc_%s_center.txt", output.label),
             row.names = F, col.names = F, sep = "\t")
 write.table(matrix(pmc.output$ess, ncol = 1), 
             sprintf("results/drilling/pmc_%s_ess.txt", output.label),
-            row.names = F, col.names = F)
+            row.names = F, col.names = F, sep = "\t")

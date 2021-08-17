@@ -1,3 +1,4 @@
+setwd("~/gatech/research/publication/PQMC/")
 source("scripts/lib.R")
 library(mvtnorm)
 library(randtoolbox)
@@ -35,33 +36,40 @@ is.samp <- sobol(10000, 2)
 is.logwts <- apply(is.samp, 1, logmixture)
 is.wts <- exp(is.logwts - max(is.logwts))
 is.wts <- is.wts / sum(is.wts)
+contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 10, main = "Weighted Samples")
+points(is.samp, pch = 18, cex = 0.5, col = "green")
 
 # parameter
 n <- 100
 p <- 2
-set.seed(950922)
+set.seed(20210524)
 
 # multinomial resampling
-mn.samp <- is.samp[sample(1:10000, n, replace = T, prob = is.wts),]
+mn.samp <- is.samp[ms.sample(is.samp, n, prob = is.wts),]
 contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 10)
+                #main = "Multinomial Resamples")
 points(mn.samp, pch = 16, cex = 1, col = "red")
 
 # residual resampling
-rs.samp <- is.samp[rs.sample(1:10000, n, is.wts),]
+rs.samp <- is.samp[rs.sample(is.samp, n, is.wts),]
 contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 10)
+                #main = "Residual Resamples")
 points(rs.samp, pch = 16, cex = 1, col = "red")
 
 # stratified resampling
-st.samp <- is.samp[st.sample(1:10000, n, is.wts),]
+st.samp <- is.samp[st.sample(is.samp, n, is.wts),]
 contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 10)
+                #main = "Stratified Resamples")
 points(st.samp, pch = 16, cex = 1, col = "red")
 
 # systematic resampling
-ss.samp <- is.samp[ss.sample(1:10000, n, is.wts),]
+ss.samp <- is.samp[ss.sample(is.samp, n, is.wts),]
 contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 10)
+                #main = "Systematic Resamples")
 points(ss.samp, pch = 16, cex = 1, col = "red")
 
 # support points resampling
-sp.samp <- is.samp[sp.sample(is.samp, n, is.wts),]
+isp.samp <- is.samp[sp.sample(is.samp, n, is.wts),]
 contour.default(x = x1, y = x2, z = z, drawlabels = F, nlevels = 10)
-points(sp.samp, pch = 16, cex = 1, col = "red")
+                #main = "ISP Resamples")
+points(isp.samp, pch = 16, cex = 1, col = "red")

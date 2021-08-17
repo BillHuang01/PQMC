@@ -2,18 +2,15 @@ source("scripts/lib.R")
 library(randtoolbox)
 
 # same sigma for all dimensions
-set.seed(950922)
+set.seed(20210522)
 N <- 1000
 n <- 100
 p <- 20
-sigma <- sqrt(2)
 runs <- 100
 
+sigma <- sqrt(2)
 ess <- rep(0, p)
 is.logmse <- rep(0, p)
-sp.ep.logmse <- rep(0, p)
-sp.is.logmse <- rep(0, p)
-sp.times <- rep(0, p)
 for (d in 2:p){
   print(d)
   samp <- matrix(qnorm(sobol(N,d),0,sigma), ncol = d)
@@ -38,35 +35,45 @@ for (d in 2:p){
   ss.ep.logmse <- rep(0, runs)
   ss.is.logmse <- rep(0, runs)
   ss.times <- rep(0, runs)
+  sp.ep.logmse <- rep(0, runs)
+  sp.is.logmse <- rep(0, runs)
+  sp.times <- rep(0, runs)
   for (j in 1:runs){
     # multinomial
     start.time <- Sys.time()
-    samp.mn <- samp[sample(1:N, n, replace = T, prob = samp.wts),]
+    samp.mn <- samp[ms.sample(samp, n, samp.wts),]
     mn.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     mn.est <- apply(samp.mn, 2, mean)
     mn.ep.logmse[j] <- log(mean(mn.est^2))
     mn.is.logmse[j] <- log(mean((mn.est - is.est)^2))
     # residual
     start.time <- Sys.time()
-    samp.rs <- samp[rs.sample(1:N, n, samp.wts),]
+    samp.rs <- samp[rs.sample(samp, n, samp.wts),]
     rs.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     rs.est <- apply(samp.rs, 2, mean)
     rs.ep.logmse[j] <- log(mean(rs.est^2))
     rs.is.logmse[j] <- log(mean((rs.est - is.est)^2))
     # systematic
     start.time <- Sys.time()
-    samp.st <- samp[st.sample(1:N, n, samp.wts),]
+    samp.st <- samp[st.sample(samp, n, samp.wts),]
     st.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     st.est <- apply(samp.st, 2, mean)
     st.ep.logmse[j] <- log(mean(st.est^2))
     st.is.logmse[j] <- log(mean((st.est - is.est)^2))
     # stratified
     start.time <- Sys.time()
-    samp.ss <- samp[ss.sample(1:N, n, samp.wts),]
+    samp.ss <- samp[ss.sample(samp, n, samp.wts),]
     ss.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     ss.est <- apply(samp.ss, 2, mean)
     ss.ep.logmse[j] <- log(mean(ss.est^2))
     ss.is.logmse[j] <- log(mean((ss.est - is.est)^2))
+    # sp
+    start.time <- Sys.time()
+    samp.sp <- samp[sp.sample(samp, n, samp.wts),]
+    sp.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
+    sp.est <- apply(samp.sp, 2, mean)
+    sp.ep.logmse[j] <- log(mean(sp.est^2))
+    sp.is.logmse[j] <- log(mean((sp.est - is.est)^2))
   }
   # store output
   logmse <- data.frame(
@@ -81,31 +88,24 @@ for (d in 2:p){
     st.times = st.times,
     ss.ep = ss.ep.logmse,
     ss.is = ss.is.logmse,
-    ss.times = ss.times
+    ss.times = ss.times,
+    sp.ep = sp.ep.logmse,
+    sp.is = sp.is.logmse,
+    sp.times = sp.times
   )
   file <- sprintf("results/resample/resample_ess_%dd.csv", d)
   write.csv(logmse, file, row.names = F)
-  # sp resampling
-  start.time <- Sys.time()
-  samp.sp <- samp[sp.sample(samp, n, samp.wts),]
-  sp.times[d] <- as.numeric((Sys.time() - start.time), units = "secs")
-  sp.est <- apply(samp.sp, 2, mean)
-  sp.ep.logmse[d] <- log(mean(sp.est^2))
-  sp.is.logmse[d] <- log(mean((sp.est - is.est)^2))
 }
-logmse <- data.frame(
+key.info <- data.frame(
   dimension = c(1:p),
   ess = ess,
-  is.logmse = is.logmse,
-  sp.ep.logmse = sp.ep.logmse,
-  sp.is.logmse = sp.is.logmse,
-  sp.times = sp.times
+  is.logmse = is.logmse
 )
 file <- sprintf("results/resample/resample_ess_summary.csv")
-write.csv(logmse, file, row.names = F)
+write.csv(key.info, file, row.names = F)
 
 # different sigma for different dimensions
-set.seed(950922)
+set.seed(20210522)
 N <- 1000
 n <- 100
 p <- 20
@@ -114,9 +114,6 @@ runs <- 100
 sigmas <- rep(0, p)
 ess <- rep(0, p)
 is.logmse <- rep(0, p)
-sp.ep.logmse <- rep(0, p)
-sp.is.logmse <- rep(0, p)
-sp.times <- rep(0, p)
 for (d in 2:p){
   print(d)
   sigma <- exp(2*log(3)/d^(0.8))
@@ -143,35 +140,45 @@ for (d in 2:p){
   ss.ep.logmse <- rep(0, runs)
   ss.is.logmse <- rep(0, runs)
   ss.times <- rep(0, runs)
+  sp.ep.logmse <- rep(0, runs)
+  sp.is.logmse <- rep(0, runs)
+  sp.times <- rep(0, runs)
   for (j in 1:runs){
     # multinomial
     start.time <- Sys.time()
-    samp.mn <- samp[sample(1:N, n, replace = T, prob = samp.wts),]
+    samp.mn <- samp[ms.sample(samp, n, samp.wts),]
     mn.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     mn.est <- apply(samp.mn, 2, mean)
     mn.ep.logmse[j] <- log(mean(mn.est^2))
     mn.is.logmse[j] <- log(mean((mn.est - is.est)^2))
     # residual
     start.time <- Sys.time()
-    samp.rs <- samp[rs.sample(1:N, n, samp.wts),]
+    samp.rs <- samp[rs.sample(samp, n, samp.wts),]
     rs.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     rs.est <- apply(samp.rs, 2, mean)
     rs.ep.logmse[j] <- log(mean(rs.est^2))
     rs.is.logmse[j] <- log(mean((rs.est - is.est)^2))
     # systematic
     start.time <- Sys.time()
-    samp.st <- samp[st.sample(1:N, n, samp.wts),]
+    samp.st <- samp[st.sample(samp, n, samp.wts),]
     st.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     st.est <- apply(samp.st, 2, mean)
     st.ep.logmse[j] <- log(mean(st.est^2))
     st.is.logmse[j] <- log(mean((st.est - is.est)^2))
     # stratified
     start.time <- Sys.time()
-    samp.ss <- samp[ss.sample(1:N, n, samp.wts),]
+    samp.ss <- samp[ss.sample(samp, n, samp.wts),]
     ss.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
     ss.est <- apply(samp.ss, 2, mean)
     ss.ep.logmse[j] <- log(mean(ss.est^2))
     ss.is.logmse[j] <- log(mean((ss.est - is.est)^2))
+    # sp
+    start.time <- Sys.time()
+    samp.sp <- samp[sp.sample(samp, n, samp.wts),]
+    sp.times[j] <- as.numeric((Sys.time() - start.time), units = "secs")
+    sp.est <- apply(samp.sp, 2, mean)
+    sp.ep.logmse[j] <- log(mean(sp.est^2))
+    sp.is.logmse[j] <- log(mean((sp.est - is.est)^2))
   }
   # store output
   logmse <- data.frame(
@@ -186,26 +193,19 @@ for (d in 2:p){
     st.times = st.times,
     ss.ep = ss.ep.logmse,
     ss.is = ss.is.logmse,
-    ss.times = ss.times
+    ss.times = ss.times,
+    sp.ep = sp.ep.logmse,
+    sp.is = sp.is.logmse,
+    sp.times = sp.times
   )
   file <- sprintf("results/resample/resample_dimen_%dd.csv", d)
   write.csv(logmse, file, row.names = F)
-  # sp resampling
-  start.time <- Sys.time()
-  samp.sp <- samp[sp.sample(samp, n, samp.wts),]
-  sp.times[d] <- as.numeric((Sys.time() - start.time), units = "secs")
-  sp.est <- apply(samp.sp, 2, mean)
-  sp.ep.logmse[d] <- log(mean(sp.est^2))
-  sp.is.logmse[d] <- log(mean((sp.est - is.est)^2))
 }
-logmse <- data.frame(
+key.info <- data.frame(
   dimension = c(1:p),
   sigma = sigmas,
   ess = ess,
-  is.logmse = is.logmse,
-  sp.ep.logmse = sp.ep.logmse,
-  sp.is.logmse = sp.is.logmse,
-  sp.times = sp.times
+  is.logmse = is.logmse
 )
 file <- sprintf("results/resample/resample_dimen_summary.csv")
-write.csv(logmse, file, row.names = F)
+write.csv(key.info, file, row.names = F)

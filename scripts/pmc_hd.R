@@ -1,6 +1,9 @@
+# read in arguments
+args <- commandArgs(trailingOnly = TRUE)
+if (length(args) != 2) stop("two arguments has to be provided!")
+
 # load library
 source("scripts/lib.R")
-# source("lib.R")
 library(mvtnorm)
 library(randtoolbox)
 
@@ -15,36 +18,30 @@ logmixture <- function(x){
   return (logf)
 }
 
-# experimental setting
-p <- 15
-expectation <- 0.5 + rep(4/3, p) / 40
-Z <- 1
-runs <- 100
-steps <- 10
-N <- 50 
-J <- 40
-sampling <- "qmc" # random / qmc / sp / msp
-resampling <- "sp" # multinomial / residual / systematic / stratified / sp
+# target distribution
+logf <- logmixture
+logf.label <- "mixture"
 
-# initialization
-ini.label <- "center"
-# ini.label <- "sample"
+# experimental setting
+runs <- 2
+steps <- 10
+p <- 3
+K <- 50 
+J <- 40
+sampling <- args[1] # random / qmc
+resampling <- args[2] # multinomial / systematic / stratified / sp
 
 # variance
-sigma <- NULL
+sigma <- 0.2
 sigma.adapt <- T
-sigma.label <- "adapt"
-
-dir.create(sprintf("results/pmc_hd/mixture_%s_%s_%s_%s/", 
-                   sampling, resampling, ini.label, sigma.label))
+sigma.label <- "0.2_adapt"
 
 for (d in 2:p){
-  set.seed(950922)
+  set.seed(20210522)
+  # set up initialization
   expectation <- 0.5 + rep(4/3, d) / 40
-  ini <- sobol(N, p)
-  ini.logq <- NULL
-  #ini <- halton(N*J, d)
-  #ini.logq <- rep(0, N*J)
+  Z <- 1
+  ini <- sobol(K, d)
   
   # store results
   m.std <- rep(0, runs)
@@ -55,28 +52,28 @@ for (d in 2:p){
   times <- rep(0, runs)
   
   # experiment
-  for (k in 1:runs){
+  for (l in 1:runs){
     start.time <- Sys.time()
-    pmc.output <- pmc(logmixture, N, J, steps, ini, ini.logq, 
+    pmc.output <- pmc(logmixture, K, J, steps, ini,
                       sampling = sampling, resampling = resampling, 
                       sigma = sigma, sigma.adapt = sigma.adapt, visualization = F)
     end.time <- Sys.time()
-    times[k] <- as.numeric((end.time - start.time), units = "secs")
-    m.std[k] <- log(mean((pmc.output$m.std - expectation)^2))
-    m.wts[k] <- log(mean((pmc.output$m.wts - expectation)^2))
-    m.las[k] <- log(mean((pmc.output$m.las - expectation)^2))
-    z.std[k] <- log((pmc.output$z.std - Z)^2)
-    z.wts[k] <- log((pmc.output$z.wts - Z)^2)
+    times[l] <- as.numeric((end.time - start.time), units = "secs")
+    m.std[l] <- log(mean((pmc.output$m.std - expectation)^2))
+    m.wts[l] <- log(mean((pmc.output$m.wts - expectation)^2))
+    m.las[l] <- log(mean((pmc.output$m.las - expectation)^2))
+    z.std[l] <- log((pmc.output$z.std - Z)^2)
+    z.wts[l] <- log((pmc.output$z.wts - Z)^2)
     
     # save log
-    log.file <- sprintf("results/pmc_hd/log_mixture_%d_%d_%d_%s_%s_%s_%s.txt",
-                        N,J,steps,sampling,resampling,ini.label,sigma.label)
+    log.file <- sprintf("results/pmc_hd/log_%s_%d_%d_%d_%s_%s_%s.txt",
+                        logf.label,K,J,steps,sampling,resampling,sigma.label)
     sink(log.file)
     cat(sprintf("dimension:%d\n", d))
-    cat(sprintf("run: %d\n", k))
-    cat(sprintf("m.std: %.3f\n", m.std[k]))
-    cat(sprintf("m.wts: %.3f\n", m.wts[k]))
-    cat(sprintf("time: %.3f\n", times[k]))
+    cat(sprintf("run: %d\n", l))
+    cat(sprintf("m.std: %.3f\n", m.std[l]))
+    cat(sprintf("m.wts: %.3f\n", m.wts[l]))
+    cat(sprintf("time: %.3f\n", times[l]))
     sink()
   }
   
@@ -89,8 +86,8 @@ for (d in 2:p){
     z.wts,
     times
   )
-  file <- sprintf("results/pmc_hd/mixture_%s_%s_%s_%s/pmc_%dd_%d_%d_%d.txt", 
-                  sampling, resampling, ini.label, sigma.label, d, N, J, steps)
+  file <- sprintf("results/pmc_hd/%s_p%d_%d_%d_%d_%s_%s_%s.csv", 
+                  logf.label, d, K, J, steps, sampling, resampling, sigma.label) 
   write.csv(logmse, file, row.names = F)
   
 }

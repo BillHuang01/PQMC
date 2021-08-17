@@ -24,7 +24,7 @@ hilbert.curve.order <- function(x,order=8){
 }
 
 # resample function
-ms.sample <- function(x, n, prob){
+mn.sample <- function(x, n, prob){
   # multinomial resampling
   N <- nrow(x)
   idx <- sample(1:N, n, replace = T, prob = prob)
@@ -259,7 +259,7 @@ pmc <- function(logf, K, J, steps, ini,
       
     # center adaptation
     if (resampling == 'multinomial'){
-      center <- samp[ms.sample(samp, K, samp.wts),]
+      center <- samp[mn.sample(samp, K, samp.wts),]
     } else if (resampling == 'residual'){
       center <- samp[rs.sample(samp, K, samp.wts),]
     } else if (resampling == 'systematic'){

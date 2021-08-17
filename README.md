@@ -2,7 +2,16 @@ Population Quasi-Monte Carlo
 ================
 Chaofan (Bill) Huang
 
-Let us first load the required libraries and scripts.
+Let us first install the required R package.
+
+``` r
+# please uncomment to install the required packages.
+# install.packages("mvtnorm")
+# install.packages("randtoolbox")
+# install.packages("gmp") # call in "scripts/hilbert.R"
+```
+
+Now load the required libraries and scripts.
 
 ``` r
 set.seed(20210816)

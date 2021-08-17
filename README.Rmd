@@ -4,7 +4,16 @@ author: "Chaofan (Bill) Huang"
 output: rmarkdown::github_document
 ---
 
-Let us first load the required libraries and scripts.
+Let us first install the required R package.
+
+```{r install, message = F, warning = F}
+# please uncomment to install the required packages.
+# install.packages("mvtnorm")
+# install.packages("randtoolbox")
+# install.packages("gmp") # call in "scripts/hilbert.R"
+```
+
+Now load the required libraries and scripts.
 
 ```{r library, message = F, warning = F}
 set.seed(20210816)

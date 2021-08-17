@@ -14,7 +14,6 @@
 
 # Ignore document directory for now
 doc*
-data*
 results*
 archive*
 scripts/analyze.R

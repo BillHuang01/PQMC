@@ -16,5 +16,7 @@
 doc*
 data*
 results*
+archive*
 scripts/analyze.R
+scripts/archive/*
 
